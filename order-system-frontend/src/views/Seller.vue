@@ -1,119 +1,182 @@
 <template>
-  <div class="seller-page">
-    <div class="page-header">
-      <h1>订单管理系统</h1>
-      <p>管理员后台</p>
-    </div>
+  <div class="container">
+    <h2>订单管理系统 - 管理员后台</h2>
 
-    <div class="container">
-      <h2 class="title">订单管理</h2>
-      <div class="order-table">
-        <div v-for="o in orders" :key="o.id" class="order-row">
-          <div>订单：{{ o.id }}</div>
-          <div>商品：{{ o.productId }}</div>
-          <div>用户：{{ o.userId }}</div>
-          <div class="status">{{ o.status }}</div>
-          <div class="btns">
-            <button class="btn finish" @click="finish(o.id)">完成</button>
-            <button class="btn delete" @click="del(o.id)">删除</button>
-          </div>
-        </div>
+    <!-- 订单统计卡片 -->
+    <div class="stats">
+      <div class="stat-card">
+        <h3>{{ stats.total }}</h3>
+        <p>总订单数</p>
+      </div>
+      <div class="stat-card">
+        <h3 style="color: orange">{{ stats.pending }}</h3>
+        <p>待接单</p>
+      </div>
+      <div class="stat-card">
+        <h3 style="color: green">{{ stats.completed }}</h3>
+        <p>已完成</p>
       </div>
     </div>
+
+    <!-- 批量操作栏 -->
+    <div class="toolbar">
+      <button @click="selectAll" class="btn-select">全选</button>
+      <button @click="batchComplete" class="btn-complete" :disabled="selectedIds.length === 0">批量完成</button>
+      <button @click="batchDelete" class="btn-delete" :disabled="selectedIds.length === 0">批量删除</button>
+      <button @click="refreshOrders" class="btn-refresh">刷新</button>
+    </div>
+
+    <!-- 订单列表 -->
+    <table class="order-table">
+      <thead>
+        <tr>
+          <th><input type="checkbox" @change="toggleAll" :checked="isAllSelected"></th>
+          <th>订单编号</th>
+          <th>商品</th>
+          <th>用户</th>
+          <th>状态</th>
+          <th>备注</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="order in orders" :key="order.id">
+          <td><input type="checkbox" v-model="selectedIds" :value="order.id"></td>
+          <td>订单 #{{ order.id }}</td>
+          <td>商品 #{{ order.productId }}</td>
+          <td>用户 #{{ order.userId }}</td>
+          <td>{{ order.status }}</td>
+          <td>{{ order.remark || '无' }}</td>
+          <td>
+            <button @click="completeOrder(order.id)" class="btn-small btn-complete">完成</button>
+            <button @click="deleteOrder(order.id)" class="btn-small btn-delete">删除</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue'
+<script>
 import axios from 'axios'
-const orders = ref([])
-
-load()
-function load() {
-  axios.get('http://localhost:8080/order/list').then(res => {
-    orders.value = res.data
-  })
-}
-
-function finish(id) {
-  axios.post('http://localhost:8080/order/update', {
-    id, status: '已完成'
-  }).then(() => load())
-}
-
-function del(id) {
-  if (confirm('确认删除？')) {
-    axios.delete('http://localhost:8080/order/delete/' + id).then(() => load())
+export default {
+  data() {
+    return {
+      orders: [],
+      selectedIds: []
+    };
+  },
+  computed: {
+    stats() {
+      const total = this.orders.length;
+      const pending = this.orders.filter(o => o.status === '待接单').length;
+      const completed = this.orders.filter(o => o.status === '已完成').length;
+      return { total, pending, completed };
+    },
+    isAllSelected() {
+      return this.selectedIds.length === this.orders.length && this.orders.length > 0;
+    }
+  },
+  methods: {
+    async refreshOrders() {
+      const res = await axios.get("http://localhost:8080/order/list");
+      this.orders = res.data;
+      this.selectedIds = []; // 刷新后清空选中
+    },
+    toggleAll(e) {
+      if (e.target.checked) {
+        this.selectedIds = this.orders.map(o => o.id);
+      } else {
+        this.selectedIds = [];
+      }
+    },
+    selectAll() {
+      this.selectedIds = this.orders.map(o => o.id);
+    },
+    async completeOrder(id) {
+      await axios.post(`http://localhost:8080/order/complete/${id}`);
+      this.refreshOrders();
+    },
+    async deleteOrder(id) {
+      await axios.post(`http://localhost:8080/order/delete/${id}`);
+      this.refreshOrders();
+    },
+    async batchComplete() {
+      await axios.post("http://localhost:8080/order/batchComplete", this.selectedIds);
+      this.refreshOrders();
+      alert("批量完成成功！");
+    },
+    async batchDelete() {
+      if (confirm("确定要删除选中订单吗？")) {
+        await axios.post("http://localhost:8080/order/batchDelete", this.selectedIds);
+        this.refreshOrders();
+        alert("批量删除成功！");
+      }
+    }
+  },
+  mounted() {
+    this.refreshOrders();
   }
-}
+};
 </script>
 
 <style scoped>
-.seller-page {
-  background: #fff;
-  color: #333;
-  min-height: 100vh;
-  font-family: "Microsoft YaHei", sans-serif;
-}
-
-.page-header {
-  background: #222;
-  color: white;
+.container {
   padding: 20px;
+}
+.stats {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  flex: 1;
+  border: 1px solid #eee;
+  padding: 15px;
+  border-radius: 8px;
   text-align: center;
 }
-
-.page-header h1 {
-  margin: 0;
-  font-size: 24px;
-}
-
-.container {
-  max-width: 1100px;
-  margin: 30px auto;
-  padding: 0 20px;
-}
-
-.title {
-  font-size: 18px;
-  border-left: 4px solid #222;
-  padding-left: 10px;
+.toolbar {
   margin-bottom: 15px;
-}
-
-.order-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  border: 1px solid #eee;
-  margin-bottom: 8px;
-  border-radius: 4px;
-}
-
-.status {
-  font-weight: bold;
-}
-
-.btns {
   display: flex;
   gap: 10px;
 }
-
-.btn {
+.btn-select, .btn-refresh {
+  background: #666;
+  color: white;
   border: none;
   padding: 6px 12px;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
 }
-
-.finish {
-  background: #333;
+.btn-complete {
+  background: #52c41a;
   color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
 }
-
-.delete {
-  background: #555;
+.btn-delete {
+  background: #ff4d4f;
   color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-small {
+  padding: 4px 8px;
+  font-size: 12px;
+  margin-right: 5px;
+}
+.order-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.order-table th, .order-table td {
+  border: 1px solid #eee;
+  padding: 10px;
+  text-align: center;
 }
 </style>
