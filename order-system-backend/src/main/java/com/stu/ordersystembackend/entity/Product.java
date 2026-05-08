@@ -9,6 +9,7 @@ public class Product {
     private String name;
     private Double price;
     private Integer stock;
+    private String category;
 
     public Integer getId() {
         return id;
@@ -40,5 +41,13 @@ public class Product {
 
     public void setStock(Integer stock) {
         this.stock = stock;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 }
