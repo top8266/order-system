@@ -1,72 +1,81 @@
 <template>
   <div class="container">
-    <h2 style="text-align: center; margin-bottom: 30px;">商品列表</h2>
+    <h2 class="page-title">在线点餐商城</h2>
 
-    <!-- 购物车按钮 -->
+    <!-- 购物车悬浮按钮 -->
     <button class="cart-btn" @click="showCartDrawer = true">
       🛒 购物车
-      <span v-if="Object.keys(cart).length > 0" class="badge">{{ totalItems }}</span>
+      <span v-if="totalItems > 0" class="badge">{{ totalItems }}</span>
     </button>
+
+    <!-- 分类标签栏 -->
+    <div class="category-tabs">
+      <button :class="{active: activeCat === ''}" @click="getProducts()">全部商品</button>
+      <button :class="{active: activeCat === '饮料'}" @click="getByCategory('饮料')">饮料</button>
+      <button :class="{active: activeCat === '零食'}" @click="getByCategory('零食')">零食</button>
+      <button :class="{active: activeCat === '主食'}" @click="getByCategory('主食')">主食</button>
+      <button :class="{active: activeCat === '水果'}" @click="getByCategory('水果')">水果</button>
+      <button :class="{active: activeCat === '五金'}" @click="getByCategory('五金')">五金</button>
+      <button :class="{active: activeCat === '文具'}" @click="getByCategory('文具')">文具</button>
+    </div>
 
     <!-- 商品列表 -->
     <div class="product-list">
       <div class="product-card" v-for="product in products" :key="product.id">
+        <!-- 核心：自动匹配Emoji -->
         <div class="product-icon">
-          {{
-            {
-              '矿泉水': '💧',
-              '面包': '🍞',
-              '方便面': '🍜',
-              '可乐': '🥤',
-              '薯片': '🥔',
-              '火腿肠': '🌭',
-              '牛奶': '🥛',
-              '饼干': '🍪'
-            }[product.name] || '📦'
-          }}
+          {{ getProductEmoji(product.name) }}
         </div>
-        <h3>{{ product.name }}</h3>
+        <h3 class="product-name">{{ product.name }}</h3>
         <p class="price">¥{{ product.price }}</p>
-        <p class="stock" :class="{'low-stock': product.stock < 5}">库存: {{ product.stock }}</p>
+        <p class="stock" :class="{'low':product.stock < 5}">库存：{{ product.stock }}</p>
 
-        <div class="quantity-control">
-          <button @click="decreaseQuantity(product.id)">-</button>
+        <div class="num-control">
+          <button @click="dec(product.id)">-</button>
           <span>{{ cart[product.id] || 0 }}</span>
-          <button @click="increaseQuantity(product.id, product.stock)">+</button>
+          <button @click="add(product.id, product.stock)">+</button>
         </div>
 
-        <input
-          type="text"
-          placeholder="下单备注（选填）"
-          v-model="remarkList[product.id]"
-          class="remark-input"
-        >
+        <input v-model="remarkList[product.id]" placeholder="下单备注（选填）" class="remark-input" />
       </div>
     </div>
 
-    <!-- 购物车抽屉 -->
-    <div class="drawer-overlay" v-if="showCartDrawer" @click="showCartDrawer = false"></div>
-    <div class="cart-drawer" :class="{ open: showCartDrawer }">
-      <div class="drawer-header">
-        <h3>我的购物车</h3>
-        <button @click="showCartDrawer = false" class="close-btn">×</button>
+    <!-- 我的历史订单 -->
+    <div class="order-wrap">
+      <h3 class="order-title">📋 我的历史订单</h3>
+      <div class="order-list">
+        <div v-for="item in myOrders" :key="item.id" class="order-item">
+          <div class="order-left">
+            <span>订单编号：{{ item.id }}</span>
+            <span>状态：{{ item.status }}</span>
+          </div>
+          <div class="order-right">备注：{{ item.remark || '无' }}</div>
+        </div>
+        <div v-if="myOrders.length === 0" class="empty-tip">暂无下单记录</div>
       </div>
+    </div>
 
+    <!-- 购物车遮罩 -->
+    <div class="overlay" v-if="showCartDrawer" @click="showCartDrawer=false"></div>
+    <!-- 购物车侧边抽屉 -->
+    <div class="drawer" :class="{open:showCartDrawer}">
+      <div class="drawer-head">
+        <h3>我的购物车</h3>
+        <button @click="showCartDrawer=false" class="close-btn">×</button>
+      </div>
       <div class="drawer-body">
-        <div v-if="Object.keys(cart).length === 0" class="empty-cart">购物车为空</div>
+        <div v-if="totalItems === 0" class="cart-empty">购物车空空如也～</div>
         <div v-else>
-          <div class="cart-item" v-for="(quantity, productId) in cart" :key="productId">
-            <div class="item-main">
-              <span class="item-name">{{ getProductName(productId) }}</span>
-              <span>× {{ quantity }}</span>
+          <div v-for="(qty, pid) in cart" :key="pid" class="cart-item">
+            <div class="cart-item-top">
+              <span class="cart-name">{{ getName(pid) }}</span>
+              <span>× {{ qty }}</span>
+              <span class="cart-price">¥{{ getPrice(pid)*qty }}</span>
             </div>
-            <span class="item-price">¥{{ getProductPrice(productId) * quantity }}</span>
-            <div v-if="remarkList[productId]" class="item-remark">备注: {{ remarkList[productId] }}</div>
+            <div v-if="remarkList[pid]" class="cart-remark">备注：{{ remarkList[pid] }}</div>
           </div>
-          <div class="cart-total">
-            <strong>总计: ¥{{ totalPrice }}</strong>
-          </div>
-          <button @click="submitCart" class="submit-btn">确认下单</button>
+          <div class="cart-total">合计：¥{{ totalPrice.toFixed(2) }}</div>
+          <button class="submit-btn" @click="submit()">立即结算下单</button>
         </div>
       </div>
     </div>
@@ -79,102 +88,162 @@ export default {
   data() {
     return {
       products: [],
+      myOrders: [],
       cart: {},
       remarkList: {},
-      showCartDrawer: false
-    };
+      showCartDrawer: false,
+      activeCat: ''
+    }
   },
   computed: {
-    totalPrice() {
-      return Object.entries(this.cart).reduce((sum, [productId, quantity]) => {
-        const product = this.products.find(p => p.id === parseInt(productId));
-        return sum + (product ? product.price * quantity : 0);
-      }, 0);
-    },
     totalItems() {
-      return Object.values(this.cart).reduce((sum, qty) => sum + qty, 0);
+      return Object.values(this.cart).reduce((a,b)=>a+b,0)
+    },
+    totalPrice() {
+      return Object.entries(this.cart).reduce((sum,[pid,qty])=>{
+        const p = this.products.find(x=>x.id==pid)
+        return sum + (p?p.price*qty:0)
+      },0)
     }
   },
   methods: {
+    // 关键方法：自动根据商品名匹配Emoji
+    getProductEmoji(name){
+      // 水果类
+      if(name.includes('苹果')) return '🍎'
+      if(name.includes('香蕉')) return '🍌'
+      if(name.includes('橙子') || name.includes('橘子')) return '🍊'
+      if(name.includes('葡萄')) return '🍇'
+      if(name.includes('西瓜')) return '🍉'
+      if(name.includes('芒果')) return '🥭'
+
+      // 饮品类
+      if(name.includes('可乐') || name.includes('饮料')) return '🥤'
+      if(name.includes('牛奶')) return '🥛'
+      if(name.includes('矿泉水') || name.includes('水')) return '💧'
+      if(name.includes('奶茶')) return '🧋'
+
+      // 零食类
+      if(name.includes('面包')) return '🍞'
+      if(name.includes('薯片')) return '🥔'
+      if(name.includes('饼干')) return '🍪'
+      if(name.includes('火腿肠')) return '🌭'
+      if(name.includes('方便面') || name.includes('泡面')) return '🍜'
+
+      // 五金工具类
+      if(name.includes('螺丝') || name.includes('螺母')) return '🔩'
+      if(name.includes('扳手') || name.includes('钳子')) return '🔧'
+      if(name.includes('锤子')) return '🔨'
+
+      // 文具类
+      if(name.includes('笔')) return '✏️'
+      if(name.includes('本子') || name.includes('笔记本')) return '📒'
+      if(name.includes('书包')) return '🎒'
+
+      // 默认图标
+      return '📦'
+    },
+
     async getProducts() {
-      const res = await axios.get("http://localhost:8080/order/product/list");
-      this.products = res.data;
+      const {data} = await axios.get('http://localhost:8080/order/product/list')
+      this.products = data
+      this.activeCat = ''
     },
-    increaseQuantity(productId, maxStock) {
-      const current = this.cart[productId] || 0;
-      if (current < maxStock) {
-        this.cart[productId] = current + 1;
-      } else {
-        alert("库存不足");
-      }
+    async getByCategory(cat) {
+      const {data} = await axios.get('http://localhost:8080/order/product/category?category='+cat)
+      this.products = data
+      this.activeCat = cat
     },
-    decreaseQuantity(productId) {
-      const current = this.cart[productId] || 0;
-      if (current > 0) {
-        this.cart[productId] = current - 1;
-        if (this.cart[productId] === 0) {
-          delete this.cart[productId];
-          delete this.remarkList[productId];
+    async getMyOrders() {
+      const {data} = await axios.get('http://localhost:8080/order/user/order')
+      this.myOrders = data
+    },
+    add(pid, max) {
+      const now = this.cart[pid] || 0
+      if (now < max) this.cart[pid] = now + 1
+    },
+    dec(pid) {
+      const now = this.cart[pid] || 0
+      if (now > 0) {
+        this.cart[pid]--
+        if (this.cart[pid] === 0) {
+          delete this.cart[pid]
+          delete this.remarkList[pid]
         }
       }
     },
-    getProductName(productId) {
-      return this.products.find(p => p.id === parseInt(productId))?.name || "";
+    getName(pid) {
+      return this.products.find(x=>x.id==pid)?.name || ''
     },
-    getProductPrice(productId) {
-      return this.products.find(p => p.id === parseInt(productId))?.price || 0;
+    getPrice(pid) {
+      return this.products.find(x=>x.id==pid)?.price || 0
     },
-    async submitCart() {
-      const cartList = Object.entries(this.cart).map(([productId, quantity]) => ({
-        productId: parseInt(productId),
-        quantity,
-        remark: this.remarkList[productId] || ""
-      }));
-      const res = await axios.post("http://localhost:8080/order/batchAdd", cartList);
-      if (res.data === "success") {
-        alert("下单成功！");
-        this.cart = {};
-        this.remarkList = {};
-        this.showCartDrawer = false;
-        this.getProducts();
-      } else {
-        alert(res.data);
-      }
+    async submit() {
+      const list = Object.entries(this.cart).map(([pid,qty])=>({
+        productId: parseInt(pid), quantity: qty, remark: this.remarkList[pid]||''
+      }))
+      await axios.post('http://localhost:8080/order/batchAdd', list)
+      alert('🎉 下单成功！')
+      this.cart = {}
+      this.remarkList = {}
+      this.showCartDrawer = false
+      this.getProducts()
+      this.getMyOrders()
     }
   },
   mounted() {
-    this.getProducts();
+    this.getProducts()
+    this.getMyOrders()
   }
-};
+}
 </script>
 
 <style scoped>
-.container {
-  padding: 20px;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+.container{
+  padding: 40px 20px;
   max-width: 1200px;
   margin: 0 auto;
   position: relative;
+  background: #f5f7fa;
+  min-height: 100vh;
+}
+.page-title{
+  text-align: center;
+  font-size: 28px;
+  color: #2a3342;
+  margin-bottom: 35px;
+  font-weight: 600;
 }
 
-.cart-btn {
+.cart-btn{
   position: fixed;
-  top: 20px;
-  right: 20px;
-  background: #1890ff;
-  color: white;
+  top: 30px;
+  right: 30px;
+  background: #409eff;
+  color: #fff;
   border: none;
-  padding: 10px 16px;
-  border-radius: 20px;
-  cursor: pointer;
+  padding: 12px 20px;
+  border-radius: 30px;
   font-size: 16px;
-  z-index: 100;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(64,158,255,0.3);
+  z-index: 99;
+  transition: all 0.3s;
 }
-.badge {
-  background: red;
-  color: white;
+.cart-btn:hover{
+  background: #337ecc;
+}
+.badge{
+  background: #f56c6c;
+  color: #fff;
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -182,148 +251,229 @@ export default {
   margin-left: 8px;
 }
 
-.product-list {
+.category-tabs{
   display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 35px;
   flex-wrap: wrap;
-  gap: 24px;
-  margin-bottom: 40px;
-  justify-content: center;
 }
-.product-card {
-  border: 1px solid #eee;
-  padding: 20px;
-  border-radius: 12px;
-  width: 200px;
-  text-align: center;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-.product-icon {
-  font-size: 40px;
-  margin-bottom: 12px;
-}
-.price {
-  color: #ff4d4f;
-  font-weight: bold;
-  font-size: 18px;
-}
-.stock {
-  font-size: 14px;
-  color: #666;
-}
-.low-stock {
-  color: red;
-}
-.quantity-control {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin: 12px 0;
-}
-.quantity-control button {
-  width: 28px;
-  height: 28px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+.category-tabs button{
+  padding: 10px 22px;
+  border: 1px solid #dcdfe6;
+  border-radius: 25px;
   background: #fff;
   cursor: pointer;
+  font-size: 15px;
+  transition: all 0.3s;
 }
-.remark-input {
-  width: 100%;
-  margin-top: 8px;
-  padding: 6px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+.category-tabs button.active{
+  background: #409eff;
+  color: #fff;
+  border-color: #409eff;
+}
+.category-tabs button:hover:not(.active){
+  border-color: #409eff;
+  color: #409eff;
 }
 
-.drawer-overlay {
+.product-list{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  justify-content: center;
+}
+.product-card{
+  width: 220px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 25px 20px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.product-card:hover{
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+.product-icon{
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+.product-name{
+  font-size: 17px;
+  color: #333;
+  margin-bottom: 8px;
+}
+.price{
+  color: #f56c6c;
+  font-size: 19px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.stock{
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 15px;
+}
+.stock.low{
+  color: #f56c6c;
+  font-weight: 500;
+}
+
+.num-control{
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+.num-control button{
+  width: 32px;
+  height: 32px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background: #f5f7fa;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.num-control button:hover{
+  background: #409eff;
+  color: #fff;
+  border-color: #409eff;
+}
+
+.remark-input{
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border 0.3s;
+}
+.remark-input:focus{
+  border-color: #409eff;
+}
+
+.order-wrap{
+  max-width: 900px;
+  margin: 60px auto 0;
+  background: #fff;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+}
+.order-title{
+  font-size: 20px;
+  color: #2a3342;
+  margin-bottom: 20px;
+  border-left: 4px solid #409eff;
+  padding-left: 12px;
+}
+.order-item{
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 0;
+  border-bottom: 1px dashed #eee;
+  color: #555;
+}
+.empty-tip{
+  text-align: center;
+  padding: 30px;
+  color: #999;
+}
+
+.overlay{
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0,0,0,0.5);
   z-index: 999;
 }
-.cart-drawer {
+.drawer{
   position: fixed;
   top: 0;
-  right: -320px;
-  width: 320px;
-  height: 100%;
-  background: white;
-  box-shadow: -2px 0 8px rgba(0,0,0,0.1);
-  transition: right 0.3s ease;
+  right: -380px;
+  width: 380px;
+  height: 100vh;
+  background: #fff;
   z-index: 1000;
-  display: flex;
-  flex-direction: column;
+  transition: right 0.3s ease;
+  box-shadow: -5px 0 20px rgba(0,0,0,0.1);
 }
-.cart-drawer.open {
+.drawer.open{
   right: 0;
 }
-.drawer-header {
-  padding: 20px;
+.drawer-head{
+  padding: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   border-bottom: 1px solid #eee;
+  font-size: 18px;
+  font-weight: 600;
+}
+.close-btn{
+  border: none;
+  background: none;
+  font-size: 26px;
+  cursor: pointer;
+  color: #999;
+}
+.drawer-body{
+  padding: 25px;
+  height: calc(100% - 70px);
+  overflow-y: auto;
+}
+.cart-empty{
+  text-align: center;
+  padding: 60px 0;
+  color: #999;
+  font-size: 16px;
+}
+.cart-item{
+  margin-bottom: 18px;
+  padding-bottom: 15px;
+  border-bottom: 1px dashed #eee;
+}
+.cart-item-top{
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.close-btn {
-  border: none;
-  background: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #666;
-}
-.drawer-body {
-  padding: 20px;
-  flex: 1;
-  overflow-y: auto;
-}
-.empty-cart {
-  text-align: center;
-  color: #999;
-  margin-top: 40px;
-}
-.cart-item {
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed #eee;
-}
-.item-main {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-.item-name {
+.cart-name{
   font-weight: 500;
 }
-.item-price {
-  color: #ff4d4f;
-  font-weight: bold;
+.cart-price{
+  color: #f56c6c;
+  font-weight: 600;
 }
-.item-remark {
-  font-size: 12px;
+.cart-remark{
+  font-size: 13px;
   color: #888;
-  margin-top: 4px;
+  margin-top: 6px;
   padding-left: 4px;
 }
-.cart-total {
+.cart-total{
   text-align: right;
-  margin-top: 20px;
-  margin-bottom: 20px;
   font-size: 18px;
-  color: #ff4d4f;
+  font-weight: 600;
+  margin: 25px 0;
+  color: #333;
 }
-.submit-btn {
+.submit-btn{
   width: 100%;
-  background: #1890ff;
-  color: white;
+  background: #409eff;
+  color: #fff;
   border: none;
-  padding: 10px;
-  border-radius: 4px;
-  cursor: pointer;
+  padding: 12px;
+  border-radius: 10px;
   font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.submit-btn:hover{
+  background: #337ecc;
 }
 </style>
