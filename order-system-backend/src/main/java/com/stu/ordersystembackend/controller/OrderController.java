@@ -100,6 +100,55 @@ public class OrderController {
         return orderMapper.selectList(null);
     }
 
+    // 按状态查询订单
+    @GetMapping("/all")
+    public List<Map<String, Object>> getOrdersByStatus(@RequestParam(required = false) String status) {
+        LambdaQueryWrapper<Orders> wrapper = new LambdaQueryWrapper<>();
+        if (status != null && !status.isEmpty()) {
+            wrapper.eq(Orders::getStatus, status);
+        }
+        wrapper.orderByDesc(Orders::getId);
+        List<Orders> orders = orderMapper.selectList(wrapper);
+        
+        // 转换为包含产品信息的Map
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (Orders order : orders) {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", order.getId());
+            map.put("orderNo", order.getOrderNo());
+            map.put("productId", order.getProductId());
+            map.put("status", order.getStatus());
+            map.put("remark", order.getRemark());
+            
+            // 获取产品信息
+            Product product = productMapper.selectById(order.getProductId());
+            if (product != null) {
+                map.put("productName", product.getName());
+                map.put("productPrice", product.getPrice());
+            }
+            
+            result.add(map);
+        }
+        return result;
+    }
+
+    // 按订单号更新状态
+    @PostMapping("/status/update")
+    public String updateOrderStatus(@RequestBody Map<String, Object> params) {
+        String orderNo = (String) params.get("orderNo");
+        String status = (String) params.get("status");
+        
+        LambdaQueryWrapper<Orders> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Orders::getOrderNo, orderNo);
+        List<Orders> orders = orderMapper.selectList(wrapper);
+        
+        for (Orders order : orders) {
+            order.setStatus(status);
+            orderMapper.updateById(order);
+        }
+        return "success";
+    }
+
     // 用户历史订单
     @GetMapping("/user/order")
     public List<Orders> getUserOrder() {
@@ -184,7 +233,7 @@ public class OrderController {
             order.setOrderNo(orderNo);
             order.setProductId(productId);
             order.setUserId(1);
-            order.setStatus("待接单");
+            order.setStatus("待接单");  // 已支付，等待接单
             order.setRemark(remark);
             orderMapper.insert(order);
         }
