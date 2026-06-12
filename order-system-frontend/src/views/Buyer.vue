@@ -60,13 +60,32 @@
       <div class="drawer-body">
         <div v-if="totalItems === 0" class="cart-empty">购物车空空如也～</div>
         <div v-else>
-          <div v-for="(qty, pid) in cart" :key="pid" class="cart-item">
-            <div class="cart-item-top">
-              <span class="cart-name">{{ getName(pid) }}</span>
-              <span>× {{ qty }}</span>
-              <span class="cart-price">¥{{ getPrice(pid)*qty }}</span>
+          <div class="cart-actions">
+            <button class="clear-cart-btn" @click="clearCart">清空购物车</button>
+          </div>
+          <div v-for="(qty, pid) in cart" :key="pid" class="cart-item-box">
+            <div class="cart-item-content">
+              <div class="cart-item-header">
+                <span class="cart-name">{{ getName(pid) }}</span>
+                <button class="delete-item-btn" @click="deleteFromCart(pid)">删除</button>
+              </div>
+              <div class="cart-item-details">
+                <div class="quantity-control">
+                  <button @click="decreaseCart(pid)" class="qty-btn">-</button>
+                  <input 
+                    type="number" 
+                    :value="qty" 
+                    @change="updateCartQuantity(pid, $event.target.value)"
+                    class="qty-input"
+                    min="1"
+                    :max="getProductStock(pid)"
+                  />
+                  <button @click="increaseCart(pid)" class="qty-btn">+</button>
+                </div>
+                <span class="cart-price">¥{{ getPrice(pid)*qty }}</span>
+              </div>
+              <div v-if="remarkList[pid]" class="cart-remark">备注：{{ remarkList[pid] }}</div>
             </div>
-            <div v-if="remarkList[pid]" class="cart-remark">备注：{{ remarkList[pid] }}</div>
           </div>
           <div class="cart-total">合计：¥{{ totalPrice.toFixed(2) }}</div>
           <button class="submit-btn" @click="submit()">立即结算下单</button>
@@ -213,6 +232,54 @@ export default {
           delete this.remarkList[pid]
         }
       }
+    },
+    deleteFromCart(pid) {
+      if(confirm('确定要从购物车删除该商品？')) {
+        delete this.cart[pid]
+        delete this.remarkList[pid]
+      }
+    },
+    clearCart() {
+      if(confirm('确定要清空购物车？')) {
+        this.cart = {}
+        this.remarkList = {}
+      }
+    },
+    increaseCart(pid) {
+      const maxStock = this.getProductStock(pid)
+      const now = this.cart[pid] || 0
+      if (now < maxStock) {
+        this.cart[pid] = now + 1
+      } else {
+        alert('已达到最大库存限制')
+      }
+    },
+    decreaseCart(pid) {
+      const now = this.cart[pid] || 0
+      if (now > 1) {
+        this.cart[pid] = now - 1
+      } else if (now === 1) {
+        if(confirm('确定要删除该商品？')) {
+          delete this.cart[pid]
+          delete this.remarkList[pid]
+        }
+      }
+    },
+    updateCartQuantity(pid, value) {
+      const maxStock = this.getProductStock(pid)
+      let newQty = parseInt(value)
+      if (isNaN(newQty) || newQty < 1) {
+        newQty = 1
+      }
+      if (newQty > maxStock) {
+        alert(`最多只能购买${maxStock}件`)
+        newQty = maxStock
+      }
+      this.cart[pid] = newQty
+    },
+    getProductStock(pid) {
+      const product = this.products.find(x => x.id == pid)
+      return product ? product.stock : 0
     },
     getName(pid) {
       return this.products.find(x=>x.id==pid)?.name || ''
@@ -544,6 +611,116 @@ export default {
   padding: 25px;
   height: calc(100% - 70px);
   overflow-y: auto;
+}
+.cart-actions{
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: flex-end;
+}
+.clear-cart-btn{
+  background: #f56c6c;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+.clear-cart-btn:hover{
+  background: #f23c3c;
+}
+.cart-item-box{
+  background: #f8f9fa;
+  border: 1px solid #e5e6eb;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 15px;
+  transition: all 0.3s;
+}
+.cart-item-box:hover{
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border-color: #dcdfe6;
+}
+.cart-item-content{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cart-item-header{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cart-name{
+  font-weight: 600;
+  font-size: 15px;
+  color: #333;
+}
+.delete-item-btn{
+  background: none;
+  border: none;
+  color: #f56c6c;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+.delete-item-btn:hover{
+  background: #fee;
+}
+.cart-item-details{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #666;
+}
+.quantity-control{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.qty-btn{
+  width: 28px;
+  height: 28px;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  background: #f5f7fa;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qty-btn:hover{
+  background: #409eff;
+  color: #fff;
+  border-color: #409eff;
+}
+.qty-input{
+  width: 50px;
+  height: 28px;
+  text-align: center;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border 0.3s;
+}
+.qty-input:focus{
+  border-color: #409eff;
+}
+.cart-quantity{
+  color: #909399;
+}
+.cart-price{
+  color: #f56c6c;
+  font-weight: 600;
+  font-size: 16px;
 }
 .cart-empty{
   text-align: center;
