@@ -2,12 +2,14 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import Buyer from '../views/Buyer.vue'
 import Seller from '../views/Seller.vue'
 import Delivery from '../views/Delivery.vue'
+import Admin from '../views/Admin.vue'
 
 const routes = [
   { path: '/', redirect: '/buyer' },
   { path: '/buyer', name: 'Buyer', component: Buyer },
   { path: '/seller', name: 'Seller', component: Seller },
-  { path: '/delivery', name: 'Delivery', component: Delivery }
+  { path: '/delivery', name: 'Delivery', component: Delivery },
+  { path: '/admin', name: 'Admin', component: Admin }
 ]
 
 const router = createRouter({

@@ -4,6 +4,7 @@
       <router-link to="/buyer" style="color:white; margin:0 20px; text-decoration:none;">用户下单</router-link>
       <router-link to="/seller" style="color:white; margin:0 20px; text-decoration:none;">订单管理</router-link>
       <router-link to="/delivery" style="color:white; margin:0 20px; text-decoration:none;">接单配送</router-link>
+      <router-link to="/admin" style="color:white; margin:0 20px; text-decoration:none;">系统管理</router-link>
     </div>
     <router-view />
   </div>
