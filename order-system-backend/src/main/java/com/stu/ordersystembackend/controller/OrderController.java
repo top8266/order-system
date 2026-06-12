@@ -8,6 +8,8 @@ import com.stu.ordersystembackend.mapper.ProductMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -65,6 +67,33 @@ public class OrderController {
         return "success";
     }
 
+    // 编辑商品接口
+    @PostMapping("/product/update")
+    public String updateProduct(@RequestBody Product product) {
+        productMapper.updateById(product);
+        return "success";
+    }
+
+    // 删除商品接口
+    @PostMapping("/product/delete/{id}")
+    public String deleteProduct(@PathVariable Integer id) {
+        productMapper.deleteById(id);
+        return "success";
+    }
+
+    // 批量删除商品接口
+    @PostMapping("/product/batchDelete")
+    public String batchDeleteProduct(@RequestBody List<Integer> ids) {
+        productMapper.deleteBatchIds(ids);
+        return "success";
+    }
+
+    // 根据ID查询单个商品
+    @GetMapping("/product/{id}")
+    public Product getProductById(@PathVariable Integer id) {
+        return productMapper.selectById(id);
+    }
+
     // 全部订单
     @GetMapping("/list")
     public List<Orders> getOrders() {
@@ -76,7 +105,15 @@ public class OrderController {
     public List<Orders> getUserOrder() {
         LambdaQueryWrapper<Orders> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Orders::getUserId, 1);
-        return orderMapper.selectList(wrapper);
+        wrapper.orderByDesc(Orders::getId);
+        List<Orders> orders = orderMapper.selectList(wrapper);
+        
+        for (Orders order : orders) {
+            if (order.getOrderNo() == null || order.getOrderNo().isEmpty()) {
+                order.setOrderNo("OLD-" + order.getId());
+            }
+        }
+        return orders;
     }
 
     @PostMapping("/add")
@@ -120,9 +157,17 @@ public class OrderController {
         return "success";
     }
 
+    // 生成唯一订单编号
+    private String generateOrderNo() {
+        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + 
+               String.format("%04d", (int) (Math.random() * 10000));
+    }
+
     // 购物车批量下单
     @PostMapping("/batchAdd")
     public String batchAddOrder(@RequestBody List<Map<String, Object>> cartList) {
+        String orderNo = generateOrderNo();
+        
         for (Map<String, Object> cartItem : cartList) {
             Integer productId = (Integer) cartItem.get("productId");
             Integer quantity = (Integer) cartItem.get("quantity");
@@ -136,6 +181,7 @@ public class OrderController {
             productMapper.updateById(product);
 
             Orders order = new Orders();
+            order.setOrderNo(orderNo);
             order.setProductId(productId);
             order.setUserId(1);
             order.setStatus("待接单");

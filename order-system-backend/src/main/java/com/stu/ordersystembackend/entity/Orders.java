@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 public class Orders {
     @TableId(type = IdType.AUTO)
     private Integer id;
+    private String orderNo;
     private Integer productId;
     private Integer userId;
     private String status;
@@ -17,6 +18,14 @@ public class Orders {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public String getOrderNo() {
+        return orderNo;
+    }
+
+    public void setOrderNo(String orderNo) {
+        this.orderNo = orderNo;
     }
 
     public Integer getProductId() {
