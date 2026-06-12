@@ -11,4 +11,5 @@ public class User {
     private String username;
     private String password;
     private String role;
+    private Integer status;  // 1:正常 0:禁用
 }
