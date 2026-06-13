@@ -51,8 +51,9 @@
                 <th width="60">ID</th>
                 <th>用户名</th>
                 <th>角色</th>
-                <th>状态</th>
-                <th width="180">操作</th>
+                <th>审核状态</th>
+                <th>账户状态</th>
+                <th width="200">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -63,11 +64,18 @@
                   <span class="tag tag-role">{{ user.role }}</span>
                 </td>
                 <td>
+                  <span class="tag" :class="getAuditClass(user.auditStatus)">
+                    {{ getAuditText(user.auditStatus) }}
+                  </span>
+                </td>
+                <td>
                   <span class="tag" :class="user.status === 1 ? 'tag-active' : 'tag-disabled'">
                     {{ user.status === 1 ? '正常' : '已禁用' }}
                   </span>
                 </td>
                 <td>
+                  <button v-if="user.auditStatus === 0" class="btn-sm success" @click="auditUser(user, 1)">通过</button>
+                  <button v-if="user.auditStatus === 0" class="btn-sm danger" @click="auditUser(user, 2)">拒绝</button>
                   <button class="btn-sm warning" @click="toggleUserStatus(user)">
                     {{ user.status === 1 ? '禁用' : '启用' }}
                   </button>
@@ -175,7 +183,24 @@ export default {
         case '修改': return 'tag-warning'
         case '删除': return 'tag-danger'
         case '登录': return 'tag-info'
+        case '审核': return 'tag-info'
         default: return 'tag-default'
+      }
+    },
+    getAuditClass(status) {
+      switch(status) {
+        case 0: return 'tag-pending'
+        case 1: return 'tag-active'
+        case 2: return 'tag-disabled'
+        default: return 'tag-pending'
+      }
+    },
+    getAuditText(status) {
+      switch(status) {
+        case 0: return '待审核'
+        case 1: return '已通过'
+        case 2: return '已拒绝'
+        default: return '待审核'
       }
     },
     async refreshAll() {
@@ -237,6 +262,17 @@ export default {
       if (confirm('确定要删除该用户？')) {
         await axios.post('http://localhost:8080/admin/seller/delete/' + id)
         alert('删除成功')
+        this.refreshAll()
+      }
+    },
+    async auditUser(user, auditStatus) {
+      const text = auditStatus === 1 ? '通过' : '拒绝'
+      if (confirm(`确定要${text}该用户的审核申请？`)) {
+        await axios.post('http://localhost:8080/admin/seller/audit', {
+          id: user.id,
+          auditStatus: auditStatus
+        })
+        alert(`审核${text}成功`)
         this.refreshAll()
       }
     }
@@ -432,6 +468,10 @@ export default {
 .tag-disabled{
   background: linear-gradient(135deg, #fef0f0 0%, #fde2e2 100%);
   color: #f56c6c;
+}
+.tag-pending{
+  background: linear-gradient(135deg, #fdf6ec 0%, #faecd8 100%);
+  color: #e6a23c;
 }
 .tag-success{
   background: linear-gradient(135deg, #f0f9eb 0%, #d4edda 100%);

@@ -60,6 +60,20 @@
       <div class="drawer-body">
         <div v-if="totalItems === 0" class="cart-empty">购物车空空如也～</div>
         <div v-else>
+          <!-- 地址选择 -->
+          <div class="address-select">
+            <h4>📍 收货地址</h4>
+            <div v-if="selectedAddress" class="selected-address">
+              <div>{{ selectedAddress.name }} {{ selectedAddress.phone }}</div>
+              <div class="address-text">{{ selectedAddress.province }} {{ selectedAddress.city }} {{ selectedAddress.district }} {{ selectedAddress.detail }}</div>
+              <button class="change-btn" @click="showAddressDialog=true">更换</button>
+            </div>
+            <div v-else class="no-address-tip">
+              <span>请选择收货地址</span>
+              <button class="select-btn" @click="showAddressDialog=true">选择地址</button>
+            </div>
+          </div>
+
           <div class="cart-actions">
             <button class="clear-cart-btn" @click="clearCart">清空购物车</button>
           </div>
@@ -105,7 +119,30 @@
           <div v-for="(group, orderNo) in groupedOrders" :key="orderNo" class="order-group">
             <div class="order-header">
               <span>订单编号：{{ orderNo }}</span>
-              <span>状态：{{ group[0].status }}</span>
+              <span class="order-status" :class="getStatusClass(group[0].status)">{{ group[0].status }}</span>
+            </div>
+            <!-- 订单进度条 -->
+            <div class="order-progress">
+              <div class="progress-step" :class="{ active: getProgressStep(group[0].status) >= 1 }">
+                <span class="step-icon">📝</span>
+                <span class="step-text">下单</span>
+              </div>
+              <div class="progress-step" :class="{ active: getProgressStep(group[0].status) >= 2 }">
+                <span class="step-icon">✅</span>
+                <span class="step-text">接单</span>
+              </div>
+              <div class="progress-step" :class="{ active: getProgressStep(group[0].status) >= 3 }">
+                <span class="step-icon">📦</span>
+                <span class="step-text">备货</span>
+              </div>
+              <div class="progress-step" :class="{ active: getProgressStep(group[0].status) >= 4 }">
+                <span class="step-icon">🚚</span>
+                <span class="step-text">配送</span>
+              </div>
+              <div class="progress-step" :class="{ active: getProgressStep(group[0].status) >= 5 }">
+                <span class="step-icon">🎉</span>
+                <span class="step-text">完成</span>
+              </div>
             </div>
             <div class="order-products">
               <div v-for="item in group" :key="item.id" class="order-product-item">
@@ -114,6 +151,31 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 地址选择弹窗 -->
+    <div class="dialog-mask" v-if="showAddressDialog" @click="showAddressDialog=false"></div>
+    <div class="address-dialog" v-if="showAddressDialog">
+      <div class="dialog-head">
+        <h3>选择收货地址</h3>
+        <button @click="showAddressDialog=false" class="close-btn">×</button>
+      </div>
+      <div class="dialog-body">
+        <div v-for="addr in addresses" :key="addr.id" class="address-option" :class="{ selected: selectedAddress?.id === addr.id }" @click="selectAddress(addr)">
+          <div class="addr-name">{{ addr.name }} {{ addr.phone }}</div>
+          <div class="addr-detail">{{ addr.province }} {{ addr.city }} {{ addr.district }} {{ addr.detail }}</div>
+          <span v-if="addr.isDefault === 1" class="default-tag">默认</span>
+        </div>
+        <div v-if="addresses.length === 0" class="no-address">
+          暂无地址，请先添加
+          <router-link to="/address" class="add-link">去添加</router-link>
+        </div>
+        <div class="dialog-footer">
+          <router-link to="/address" class="manage-address-btn" @click="showAddressDialog=false">
+            + 添加/管理地址
+          </router-link>
         </div>
       </div>
     </div>
@@ -131,7 +193,10 @@ export default {
       remarkList: {},
       showCartDrawer: false,
       showOrderDrawer: false,
-      activeCat: ''
+      activeCat: '',
+      addresses: [],
+      selectedAddress: null,
+      showAddressDialog: false
     }
   },
   computed: {
@@ -157,6 +222,36 @@ export default {
     }
   },
   methods: {
+    getToken() {
+      return localStorage.getItem('token')
+    },
+    
+    // 获取订单进度步骤
+    getProgressStep(status) {
+      switch(status) {
+        case '待接单': return 1
+        case '已接单': return 2
+        case '备货中': return 3
+        case '配送中': return 4
+        case '已送达': return 5
+        case '已完成': return 5
+        default: return 1
+      }
+    },
+    
+    // 获取状态样式类
+    getStatusClass(status) {
+      switch(status) {
+        case '待接单': return 'status-pending'
+        case '已接单': return 'status-accepted'
+        case '备货中': return 'status-preparing'
+        case '配送中': return 'status-delivering'
+        case '已送达': return 'status-done'
+        case '已完成': return 'status-done'
+        default: return ''
+      }
+    },
+
     // 关键方法：自动根据商品名匹配Emoji
     getProductEmoji(name){
       // 水果类
@@ -218,6 +313,29 @@ export default {
     async getMyOrders() {
       const {data} = await axios.get('http://localhost:8080/order/user/order')
       this.myOrders = data
+    },
+    async loadAddresses() {
+      const token = this.getToken()
+      if (!token) return
+      try {
+        const { data } = await axios.get('http://localhost:8080/address/list', {
+          headers: { Authorization: token }
+        })
+        if (data.success) {
+          this.addresses = data.data
+          // 自动选择默认地址
+          const defaultAddr = this.addresses.find(a => a.isDefault === 1)
+          if (defaultAddr) {
+            this.selectedAddress = defaultAddr
+          }
+        }
+      } catch (error) {
+        console.error('获取地址失败', error)
+      }
+    },
+    selectAddress(addr) {
+      this.selectedAddress = addr
+      this.showAddressDialog = false
     },
     add(pid, max) {
       const now = this.cart[pid] || 0
@@ -291,9 +409,23 @@ export default {
       return this.products.find(x=>x.id==pid)?.name || '未知商品'
     },
     async submit() {
+      if (!this.selectedAddress) {
+        alert('请先选择收货地址')
+        return
+      }
+      
       const list = Object.entries(this.cart).map(([pid,qty])=>({
-        productId: parseInt(pid), quantity: qty, remark: this.remarkList[pid]||''
+        productId: parseInt(pid), 
+        quantity: qty, 
+        remark: this.remarkList[pid]||''
       }))
+      
+      // 添加地址信息
+      const orderData = {
+        items: list,
+        address: this.selectedAddress
+      }
+      
       await axios.post('http://localhost:8080/order/batchAdd', list)
       alert('🎉 下单成功！')
       this.cart = {}
@@ -306,6 +438,7 @@ export default {
   mounted() {
     this.getProducts()
     this.getMyOrders()
+    this.loadAddresses()
   }
 }
 </script>
@@ -772,4 +905,191 @@ export default {
 .submit-btn:hover{
   background: #337ecc;
 }
+
+/* 地址选择样式 */
+.address-select {
+  background: #f5f7fa;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+.address-select h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 14px;
+}
+.selected-address {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.selected-address div:first-child {
+  font-weight: 600;
+  color: #333;
+}
+.address-text {
+  color: #666;
+  font-size: 13px;
+}
+.change-btn {
+  background: #409eff;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.no-address-tip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.select-btn {
+  background: #409eff;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* 地址选择弹窗 */
+.address-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  background: #fff;
+  border-radius: 16px;
+  z-index: 1001;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.address-dialog .dialog-head {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e5e6eb;
+}
+.address-dialog .dialog-head h3 {
+  margin: 0;
+  color: #333;
+}
+.address-dialog .dialog-body {
+  padding: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.address-option {
+  padding: 15px;
+  border: 2px solid #e5e6eb;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.address-option:hover {
+  border-color: #409eff;
+  background: #ecf5ff;
+}
+.address-option.selected {
+  border-color: #409eff;
+  background: #ecf5ff;
+}
+.addr-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6px;
+}
+.addr-detail {
+  color: #666;
+  font-size: 13px;
+}
+.default-tag {
+  background: #409eff;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  display: inline-block;
+  margin-top: 8px;
+}
+.no-address {
+  text-align: center;
+  color: #999;
+  padding: 40px;
+}
+.add-link {
+  color: #409eff;
+  text-decoration: none;
+  margin-left: 8px;
+}
+
+.dialog-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #e5e6eb;
+  text-align: center;
+}
+.manage-address-btn {
+  display: inline-block;
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #409eff 0%, #667eea 100%);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.manage-address-btn:hover {
+  opacity: 0.9;
+}
+
+/* 订单进度条 */
+.order-progress {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.4;
+  transition: all 0.3s;
+}
+.progress-step.active {
+  opacity: 1;
+}
+.step-icon {
+  font-size: 20px;
+}
+.step-text {
+  font-size: 12px;
+  color: #666;
+}
+.progress-step.active .step-text {
+  color: #409eff;
+  font-weight: 600;
+}
+
+/* 订单状态样式 */
+.order-status {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.status-pending { background: #fef0f0; color: #f56c6c; }
+.status-accepted { background: #fdf6ec; color: #e6a23c; }
+.status-preparing { background: #f4f4f5; color: #909399; }
+.status-delivering { background: #ecf5ff; color: #409eff; }
+.status-done { background: #f0f9eb; color: #67c23a; }
 </style>
