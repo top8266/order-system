@@ -82,6 +82,30 @@ public class AdminController {
         return "success";
     }
 
+    // 审核商家/配送员
+    @PostMapping("/seller/audit")
+    public String auditSeller(@RequestBody Map<String, Object> params) {
+        Integer id = (Integer) params.get("id");
+        Integer auditStatus = (Integer) params.get("auditStatus");  // 1:通过 2:拒绝
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            return "用户不存在";
+        }
+        user.setAuditStatus(auditStatus);
+        userMapper.updateById(user);
+        addLog("审核", "审核用户: " + user.getUsername() + " -> " + (auditStatus == 1 ? "通过" : "拒绝"));
+        return "success";
+    }
+
+    // 获取待审核用户列表
+    @GetMapping("/pending")
+    public List<User> getPendingUsers() {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(User::getRole, "seller", "delivery");
+        wrapper.eq(User::getAuditStatus, 0);  // 待审核
+        return userMapper.selectList(wrapper);
+    }
+
     // 操作日志存储（内存存储，简单实现）
     private static List<Map<String, Object>> logs = new ArrayList<>();
 
