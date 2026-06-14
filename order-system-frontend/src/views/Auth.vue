@@ -27,31 +27,31 @@
       <!-- 注册表单 -->
       <div v-if="!isLogin" class="auth-form">
         <div class="form-item">
-          <label>用户名</label>
+          <label>用户名 <span class="required">*</span></label>
           <input v-model="registerForm.username" placeholder="请输入用户名" />
         </div>
         <div class="form-item">
-          <label>密码</label>
+          <label>密码 <span class="required">*</span></label>
           <input v-model="registerForm.password" type="password" placeholder="请输入密码" />
         </div>
         <div class="form-item">
-          <label>角色</label>
+          <label>角色 <span class="required">*</span></label>
           <select v-model="registerForm.role">
             <option value="buyer">普通用户</option>
             <option value="seller">商家</option>
             <option value="delivery">配送员</option>
           </select>
         </div>
-        <div class="form-item">
-          <label>电话</label>
+        <div v-if="registerForm.role === 'seller' || registerForm.role === 'delivery'" class="form-item">
+          <label>联系电话 <span class="required">*</span></label>
           <input v-model="registerForm.phone" placeholder="请输入联系电话" />
         </div>
         <div v-if="registerForm.role === 'seller'" class="form-item">
-          <label>店铺名称</label>
+          <label>店铺名称 <span class="required">*</span></label>
           <input v-model="registerForm.shopName" placeholder="请输入店铺名称" />
         </div>
         <div v-if="registerForm.role === 'delivery'" class="form-item">
-          <label>真实姓名</label>
+          <label>真实姓名 <span class="required">*</span></label>
           <input v-model="registerForm.realName" placeholder="请输入真实姓名" />
         </div>
         <button class="auth-btn" @click="handleRegister">注册</button>
@@ -91,26 +91,51 @@ export default {
         return
       }
       try {
-        const { data } = await axios.post('http://localhost:8080/auth/login', this.loginForm)
+        const response = await axios.post('http://localhost:8080/auth/login', this.loginForm, {
+          responseType: 'json'
+        })
+        const data = response.data
+        console.log('登录响应:', data)
         if (data.success) {
-          // 保存token和用户信息
           localStorage.setItem('token', data.token)
           localStorage.setItem('user', JSON.stringify(data.user))
-          alert(data.message)
-          // 根据角色跳转
-          this.redirectByRole(data.user.role)
+          alert(data.message || '登录成功')
+          this.$nextTick(() => {
+            this.redirectByRole(data.user.role)
+          })
         } else {
-          alert(data.message)
+          alert(data.message || '登录失败')
         }
       } catch (error) {
+        console.error('登录错误:', error)
         alert('登录失败，请检查网络')
       }
     },
     async handleRegister() {
+      // 基础验证
       if (!this.registerForm.username || !this.registerForm.password) {
-        alert('请填写完整信息')
+        alert('请填写用户名和密码')
         return
       }
+      
+      // 商家必须填写店铺名称
+      if (this.registerForm.role === 'seller' && !this.registerForm.shopName) {
+        alert('请填写店铺名称')
+        return
+      }
+      
+      // 商家和配送员必须填写电话
+      if ((this.registerForm.role === 'seller' || this.registerForm.role === 'delivery') && !this.registerForm.phone) {
+        alert('请填写联系电话')
+        return
+      }
+      
+      // 配送员必须填写真实姓名
+      if (this.registerForm.role === 'delivery' && !this.registerForm.realName) {
+        alert('请填写真实姓名')
+        return
+      }
+      
       // 手机号格式验证
       if (this.registerForm.phone) {
         const phoneRegex = /^1[3-9]\d{9}$/
@@ -222,9 +247,14 @@ export default {
 
 .form-item label {
   display: block;
+  font-weight: 500;
   margin-bottom: 8px;
   color: #333;
-  font-weight: 500;
+}
+
+.required {
+  color: #f56c6c;
+  margin-left: 4px;
 }
 
 .form-item input,

@@ -40,7 +40,6 @@
     <section class="section">
       <div class="section-header">
         <h2 class="section-title">👤 商家账户管理</h2>
-        <button class="add-btn" @click="openAddDialog('seller')">+ 新增商家</button>
       </div>
 
       <div class="table-container">
@@ -53,7 +52,7 @@
                 <th>角色</th>
                 <th>审核状态</th>
                 <th>账户状态</th>
-                <th width="200">操作</th>
+                <th width="240">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -76,6 +75,7 @@
                 <td>
                   <button v-if="user.auditStatus === 0" class="btn-sm success" @click="auditUser(user, 1)">通过</button>
                   <button v-if="user.auditStatus === 0" class="btn-sm danger" @click="auditUser(user, 2)">拒绝</button>
+                  <button v-if="user.auditStatus === 1" class="btn-sm primary" @click="openEditDialog(user)">编辑</button>
                   <button v-if="user.auditStatus === 1" class="btn-sm warning" @click="toggleUserStatus(user)">
                     {{ user.status === 1 ? '禁用' : '启用' }}
                   </button>
@@ -92,7 +92,6 @@
     <section class="section">
       <div class="section-header">
         <h2 class="section-title">🚚 配送员账户管理</h2>
-        <button class="add-btn" @click="openAddDialog('delivery')">+ 新增配送员</button>
       </div>
 
       <div class="table-container">
@@ -105,7 +104,7 @@
                 <th>角色</th>
                 <th>审核状态</th>
                 <th>账户状态</th>
-                <th width="200">操作</th>
+                <th width="240">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -128,6 +127,7 @@
                 <td>
                   <button v-if="user.auditStatus === 0" class="btn-sm success" @click="auditUser(user, 1)">通过</button>
                   <button v-if="user.auditStatus === 0" class="btn-sm danger" @click="auditUser(user, 2)">拒绝</button>
+                  <button v-if="user.auditStatus === 1" class="btn-sm primary" @click="openEditDialog(user)">编辑</button>
                   <button v-if="user.auditStatus === 1" class="btn-sm warning" @click="toggleUserStatus(user)">
                     {{ user.status === 1 ? '禁用' : '启用' }}
                   </button>
@@ -173,33 +173,34 @@
       </div>
     </section>
 
-    <!-- 新增商家弹窗 -->
-    <div class="dialog-mask" v-if="showAddSellerDialog" @click="showAddSellerDialog=false"></div>
-    <div class="dialog" v-if="showAddSellerDialog">
+    <!-- 编辑用户弹窗 -->
+    <div class="dialog-mask" v-if="showEditDialog" @click="showEditDialog=false"></div>
+    <div class="dialog" v-if="showEditDialog">
       <div class="dialog-head">
-        <h3>新增商家账户</h3>
-        <button @click="showAddSellerDialog=false" class="close">×</button>
+        <h3>编辑{{ editUser.role === 'seller' ? '商家' : '配送员' }}信息</h3>
+        <button @click="showEditDialog=false" class="close">×</button>
       </div>
       <div class="dialog-body">
         <div class="form-item">
           <label>用户名</label>
-          <input v-model="newSeller.username" placeholder="请输入用户名" />
+          <input v-model="editUser.username" placeholder="请输入用户名" />
         </div>
         <div class="form-item">
-          <label>密码</label>
-          <input v-model="newSeller.password" type="password" placeholder="请输入密码" />
+          <label>联系电话</label>
+          <input v-model="editUser.phone" placeholder="请输入联系电话" />
         </div>
-        <div class="form-item">
-          <label>角色</label>
-          <select v-model="newSeller.role">
-            <option value="seller">商家</option>
-            <option value="delivery">配送员</option>
-          </select>
+        <div v-if="editUser.role === 'seller'" class="form-item">
+          <label>店铺名称</label>
+          <input v-model="editUser.shopName" placeholder="请输入店铺名称" />
+        </div>
+        <div v-if="editUser.role === 'delivery'" class="form-item">
+          <label>真实姓名</label>
+          <input v-model="editUser.realName" placeholder="请输入真实姓名" />
         </div>
       </div>
       <div class="dialog-footer">
-        <button @click="showAddSellerDialog=false" class="btn default">取消</button>
-        <button @click="addSeller" class="btn primary">确认添加</button>
+        <button @click="showEditDialog=false" class="btn default">取消</button>
+        <button @click="saveEdit" class="btn primary">保存修改</button>
       </div>
     </div>
 
@@ -220,10 +221,13 @@ export default {
       sellers: [],
       logs: [],
       
-      showAddSellerDialog: false,
-      newSeller: {
+      showEditDialog: false,
+      editUser: {
+        id: null,
         username: '',
-        password: '',
+        phone: '',
+        shopName: '',
+        realName: '',
         role: 'seller'
       },
       deliverymen: []
@@ -292,28 +296,40 @@ export default {
       const {data} = await axios.get('http://localhost:8080/admin/delivery')
       this.deliverymen = data
     },
-    openAddDialog(role) {
-      this.newSeller = {
-        username: '',
-        password: '',
-        role: role
+    openEditDialog(user) {
+      this.editUser = {
+        id: user.id,
+        username: user.username || '',
+        phone: user.phone || '',
+        shopName: user.shopName || '',
+        realName: user.realName || '',
+        role: user.role || 'seller'
       }
-      this.showAddSellerDialog = true
+      this.showEditDialog = true
+    },
+    async saveEdit() {
+      if (!this.editUser.username) {
+        alert('请填写用户名')
+        return
+      }
+      
+      // 商家和配送员的电话号码验证
+      if (this.editUser.phone && (this.editUser.role === 'seller' || this.editUser.role === 'delivery')) {
+        const phoneRegex = /^1[3-9]\d{9}$/
+        if (!phoneRegex.test(this.editUser.phone)) {
+          alert('请输入有效的11位手机号码')
+          return
+        }
+      }
+      
+      await axios.post('http://localhost:8080/admin/seller/update', this.editUser)
+      alert('修改成功')
+      this.showEditDialog = false
+      this.refreshAll()
     },
     async getLogs() {
       const {data} = await axios.get('http://localhost:8080/admin/logs')
       this.logs = data
-    },
-    async addSeller() {
-      if (!this.newSeller.username || !this.newSeller.password) {
-        alert('请填写完整信息')
-        return
-      }
-      await axios.post('http://localhost:8080/admin/seller/add', this.newSeller)
-      alert('商家添加成功')
-      this.showAddSellerDialog = false
-      this.newSeller = { username: '', password: '', role: 'seller' }
-      this.refreshAll()
     },
     async toggleUserStatus(user) {
       const newStatus = user.status === 1 ? 0 : 1
@@ -501,7 +517,7 @@ export default {
   table-layout: fixed;
 }
 .data-table th, .data-table td{
-  padding: 18px 16px;
+  padding: 22px 20px;
   text-align: left;
   border-bottom: 1px solid #e5e6eb;
   vertical-align: middle;
@@ -564,18 +580,19 @@ export default {
 
 /* 小按钮 */
 .btn-sm{
-  padding: 8px 18px;
-  border-radius: 8px;
+  padding: 10px 22px;
+  border-radius: 10px;
   border: none;
-  margin: 0 4px;
+  margin: 6px 8px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   transition: all 0.3s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 60px;
+  min-width: 70px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 .btn-sm.success{
   background: #67c23a;

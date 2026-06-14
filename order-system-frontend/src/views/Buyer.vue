@@ -7,7 +7,7 @@
       <button @click="backToSellers" class="back-btn">
         ← 返回商家列表
       </button>
-      <span class="current-seller">当前店铺：{{ selectedSeller.username }}</span>
+      <span class="current-seller">当前店铺：{{ selectedSeller.shopName || selectedSeller.username }}</span>
     </div>
 
     <!-- 商家列表视图 -->
@@ -21,7 +21,8 @@
           @click="enterSeller(seller)"
         >
           <div class="seller-icon">🏬</div>
-          <h3 class="seller-name">{{ seller.username }}</h3>
+          <h3 class="seller-name">{{ seller.shopName || seller.username }}</h3>
+          <p v-if="seller.shopName" class="seller-username">用户名：{{ seller.username }}</p>
           <p class="seller-status" :class="seller.auditStatus === 1 ? 'status-active' : 'status-pending'">
             {{ seller.auditStatus === 1 ? '营业中' : '待审核' }}
           </p>
@@ -53,7 +54,7 @@
               {{ getProductEmoji(product.name) }}
             </div>
             <h3 class="product-name">{{ product.name }}</h3>
-            <p class="price">¥{{ product.price }}</p>
+            <p class="price" translate="no">¥{{ product.price }}元</p>
             <p class="stock" :class="{'low':product.stock < 5}">库存：{{ product.stock }}</p>
 
             <div class="num-control">
@@ -295,16 +296,23 @@ export default {
       // 水果类
       if(name.includes('苹果')) return '🍎'
       if(name.includes('香蕉')) return '🍌'
-      if(name.includes('橙子') || name.includes('橘子')) return '🍊'
+      if(name.includes('橙子') || name.includes('橘子') || name.includes('橙')) return '🍊'
       if(name.includes('葡萄')) return '🍇'
       if(name.includes('西瓜')) return '🍉'
       if(name.includes('芒果')) return '🥭'
+      if(name.includes('草莓')) return '🍓'
+      if(name.includes('柠檬')) return '🍋'
+      if(name.includes('红柚')) return '🍊'
 
       // 饮品类
       if(name.includes('可乐') || name.includes('饮料')) return '🥤'
       if(name.includes('牛奶')) return '🥛'
       if(name.includes('矿泉水') || name.includes('水')) return '💧'
-      if(name.includes('奶茶')) return '🧋'
+      if(name.includes('奶茶') || name.includes('奶盖') || name.includes('芋圆') || name.includes('芋泥') || name.includes('啵啵') || name.includes('四季奶青') || name.includes('波波')) return '🧋'
+      if(name.includes('酸奶')) return '🥛'
+      if(name.includes('果汁') || name.includes('芒果汁')) return '🧃'
+      if(name.includes('冰沙')) return '🧊'
+      if(name.includes('酸梅汤')) return '🍹'
 
       // 零食类
       if(name.includes('面包')) return '🍞'
@@ -312,12 +320,34 @@ export default {
       if(name.includes('饼干')) return '🍪'
       if(name.includes('火腿肠')) return '🌭'
       if(name.includes('方便面') || name.includes('泡面')) return '🍜'
+      if(name.includes('薯条')) return '🍟'
+      if(name.includes('冰淇淋') || name.includes('甜筒')) return '🍦'
+      if(name.includes('烤布蕾')) return '🍮'
+      if(name.includes('鸡排') || name.includes('鸡柳')) return '🍗'
+      if(name.includes('香肠')) return '🌭'
 
       // 主食类
-      if(name.includes('面条')) return '🍝'
-      if(name.includes('饺子')) return '🥟'
+      if(name.includes('面条') || name.includes('拉面') || name.includes('炒面') || name.includes('刀削面')) return '🍝'
+      if(name.includes('饺子') || name.includes('蒸饺')) return '🥟'
       if(name.includes('米饭')) return '🍚'
       if(name.includes('包子')) return '🥟'
+      if(name.includes('汉堡')) return '🍔'
+      if(name.includes('麻辣香锅')) return '🍲'
+      if(name.includes('水煮鱼')) return '🐟'
+      if(name.includes('回锅肉')) return '🥓'
+      if(name.includes('宫保鸡丁')) return '🍗'
+      if(name.includes('麻婆豆腐') || name.includes('豆腐')) return '🥘'
+      if(name.includes('拌面')) return '🍜'
+      if(name.includes('馄饨')) return '🍲'
+      if(name.includes('鸡腿饭')) return '🍗'
+      if(name.includes('老鸭汤')) return '🦆'
+      if(name.includes('炸鸡')) return '🍗'
+      if(name.includes('牛肉面')) return '🍜'
+      if(name.includes('凉拌牛肉')) return '🥩'
+      if(name.includes('鸡蛋汤')) return '🥚'
+      if(name.includes('黄焖鸡')) return '🍗'
+      if(name.includes('黄焖排骨')) return '🐷'
+      if(name.includes('水果拼盘')) return '🥗'
 
       // 五金工具类
       if(name.includes('螺丝') || name.includes('螺母')) return '🔩'
@@ -351,7 +381,11 @@ export default {
       this.activeCat = ''
     },
     async getByCategory(cat) {
-      const {data} = await axios.get('http://localhost:8080/order/product/category?category='+cat)
+      let url = 'http://localhost:8080/order/product/category?category='+cat
+      if (this.selectedSeller) {
+        url += '&sellerId=' + this.selectedSeller.id
+      }
+      const {data} = await axios.get(url)
       this.products = data
       this.activeCat = cat
     },
@@ -617,6 +651,11 @@ export default {
   font-size: 14px;
   color: #999;
   margin-bottom: 18px;
+}
+.seller-username{
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
 }
 .enter-btn{
   display: inline-block;
