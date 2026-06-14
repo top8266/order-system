@@ -110,17 +110,27 @@ export default {
       const token = this.getToken()
       if (!token) {
         alert('请先登录')
+        this.$router.push('/auth')
         return
       }
       try {
         const { data } = await axios.get('http://localhost:8080/address/list', {
           headers: { Authorization: token }
         })
+        console.log('地址列表响应:', data)
         if (data.success) {
-          this.addresses = data.data
+          this.addresses = data.data || []
+        } else {
+          alert(data.message || '获取地址失败')
+          if (data.message && data.message.includes('Token')) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+            this.$router.push('/auth')
+          }
         }
       } catch (error) {
         console.error('获取地址失败', error)
+        alert('获取地址失败: ' + (error.response?.data?.message || error.message))
       }
     },
     editAddress(addr) {
@@ -146,21 +156,28 @@ export default {
       }
       
       try {
+        let response
         if (this.editingAddress) {
-          await axios.post('http://localhost:8080/address/update', this.form, {
+          response = await axios.post('http://localhost:8080/address/update', this.form, {
             headers: { Authorization: token }
           })
-          alert('更新成功')
         } else {
-          await axios.post('http://localhost:8080/address/add', this.form, {
+          response = await axios.post('http://localhost:8080/address/add', this.form, {
             headers: { Authorization: token }
           })
-          alert('添加成功')
         }
-        this.closeDialog()
-        this.loadAddresses()
+        const data = response.data
+        console.log('提交地址响应:', data)
+        if (data.success) {
+          alert(data.message || (this.editingAddress ? '更新成功' : '添加成功'))
+          this.closeDialog()
+          this.loadAddresses()
+        } else {
+          alert(data.message || '操作失败')
+        }
       } catch (error) {
-        alert('操作失败')
+        console.error('操作失败', error)
+        alert('操作失败: ' + (error.response?.data?.message || error.message))
       }
     },
     async setDefault(addr) {

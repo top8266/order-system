@@ -44,7 +44,7 @@ const routes = [
   { path: '/seller', name: 'Seller', component: Seller, meta: { role: 'seller' } },
   { path: '/delivery', name: 'Delivery', component: Delivery, meta: { role: 'delivery' } },
   { path: '/admin', name: 'Admin', component: Admin, meta: { role: 'admin' } },
-  { path: '/address', name: 'AddressManager', component: AddressManager }
+  { path: '/address', name: 'AddressManager', component: AddressManager, meta: { role: 'buyer' } }
 ]
 
 // 在挂载路由之前先创建路由实例

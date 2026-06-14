@@ -20,13 +20,14 @@
           class="seller-card"
           @click="enterSeller(seller)"
         >
-          <div class="seller-icon">🏬</div>
-          <h3 class="seller-name">{{ seller.shopName || seller.username }}</h3>
-          <p v-if="seller.shopName" class="seller-username">用户名：{{ seller.username }}</p>
-          <p class="seller-status" :class="seller.auditStatus === 1 ? 'status-active' : 'status-pending'">
-            {{ seller.auditStatus === 1 ? '营业中' : '待审核' }}
-          </p>
-          <p class="seller-product-count">{{ getSellerProductCount(seller.id) }} 件商品</p>
+          <div class="seller-icon">{{ getSellerEmoji(seller.shopName) }}</div>
+          <div class="seller-info">
+            <span class="seller-name">{{ seller.shopName || seller.username }}</span>
+            <span class="seller-status" :class="seller.auditStatus === 1 ? 'status-active' : 'status-pending'">
+              {{ seller.auditStatus === 1 ? '营业中' : '待审核' }}
+            </span>
+            <span class="seller-product-count">{{ getSellerProductCount(seller.id) }} 件商品</span>
+          </div>
           <div class="enter-btn">进入店铺 →</div>
         </div>
       </div>
@@ -157,6 +158,7 @@
             <div class="order-header">
               <span>订单编号：{{ orderNo }}</span>
               <span class="order-status" :class="getStatusClass(group[0].status)">{{ group[0].status }}</span>
+              <button class="delete-btn" @click="deleteOrder(orderNo, group)">🗑️ 删除</button>
             </div>
             <!-- 订单进度条 -->
             <div class="order-progress">
@@ -183,8 +185,18 @@
             </div>
             <div class="order-products">
               <div v-for="item in group" :key="item.id" class="order-product-item">
-                <span>{{ getProductName(item.productId) }}</span>
+                <span>{{ item.productName || getProductName(item.productId) }} ×{{ item.quantity || 1 }}</span>
                 <span v-if="item.remark" class="remark">备注：{{ item.remark }}</span>
+              </div>
+            </div>
+            <div class="order-info-extra">
+              <div v-if="group[0].address" class="info-row">
+                <span class="info-label">📍 地址：</span>
+                <span class="info-value">{{ group[0].address }}</span>
+              </div>
+              <div v-if="group[0].sellerPhone" class="info-row">
+                <span class="info-label">📞 商家电话：</span>
+                <span class="info-value phone">{{ group[0].sellerPhone }}</span>
               </div>
             </div>
           </div>
@@ -291,28 +303,72 @@ export default {
       }
     },
 
+    // 根据店铺名称获取对应的图标
+    getSellerEmoji(shopName) {
+      if (!shopName) return '🏬'
+      
+      // 奶茶店/饮品店
+      if(shopName.includes('蜜雪') || shopName.includes('益禾堂') || shopName.includes('喜茶')) return '🧋'
+      
+      // 川菜/湘菜馆
+      if(shopName.includes('川湘') || shopName.includes('川菜') || shopName.includes('湘菜')) return '🍲'
+      
+      // 水果店/鲜果店
+      if(shopName.includes('鲜果') || shopName.includes('水果')) return '🍇'
+      
+      // 沙县小吃
+      if(shopName.includes('沙县')) return '🥟'
+      
+      // 汉堡店/西式快餐
+      if(shopName.includes('汉堡') || shopName.includes('炸鸡')) return '🍔'
+      
+      // 兰州拉面/面馆
+      if(shopName.includes('兰州') || shopName.includes('拉面') || shopName.includes('面馆')) return '🍜'
+      
+      // 黄焖鸡
+      if(shopName.includes('黄焖鸡')) return '🍗'
+      
+      // 鸡排店
+      if(shopName.includes('鸡排') || shopName.includes('正新')) return '🍟'
+      
+      // 便利店
+      if(shopName.includes('便利') || shopName.includes('超市')) return '🏪'
+      
+      // 默认图标
+      return '🏬'
+    },
+
     // 关键方法：自动根据商品名匹配Emoji
     getProductEmoji(name){
       // 水果类
       if(name.includes('苹果')) return '🍎'
-      if(name.includes('香蕉')) return '🍌'
-      if(name.includes('橙子') || name.includes('橘子') || name.includes('橙')) return '🍊'
-      if(name.includes('葡萄')) return '🍇'
+      if(name.includes('香蕉') || name.includes('香蕉奶昔')) return '🍌'
+      if(name.includes('橙子') || name.includes('橘子') || name.includes('橙') || name.includes('橙汁') || name.includes('橙橙')) return '🍊'
+      if(name.includes('葡萄') || name.includes('葡萄汁')) return '🍇'
       if(name.includes('西瓜')) return '🍉'
-      if(name.includes('芒果')) return '🥭'
-      if(name.includes('草莓')) return '🍓'
+      if(name.includes('芒果') || name.includes('芒芒')) return '🥭'
+      if(name.includes('草莓') || name.includes('莓莓')) return '🍓'
       if(name.includes('柠檬')) return '🍋'
       if(name.includes('红柚')) return '🍊'
+      if(name.includes('蓝莓')) return '🫐'
+      if(name.includes('百香果')) return '🥭'
+      if(name.includes('黑提')) return '🍇'
 
       // 饮品类
-      if(name.includes('可乐') || name.includes('饮料')) return '🥤'
-      if(name.includes('牛奶')) return '🥛'
-      if(name.includes('矿泉水') || name.includes('水')) return '💧'
-      if(name.includes('奶茶') || name.includes('奶盖') || name.includes('芋圆') || name.includes('芋泥') || name.includes('啵啵') || name.includes('四季奶青') || name.includes('波波')) return '🧋'
+      if(name.includes('可乐')) return '🥤'
+      if(name.includes('牛奶') || name.includes('奶昔')) return '🥛'
+      if(name.includes('矿泉水')) return '💧'
+      if(name.includes('奶茶') || name.includes('奶盖') || name.includes('芋圆') || name.includes('芋泥') || name.includes('啵啵') || name.includes('四季奶青') || name.includes('波波') || name.includes('烤奶') || name.includes('珍珠奶茶') || name.includes('红豆奶茶') || name.includes('椰椰奶茶') || name.includes('黑糖珍珠') || name.includes('黑糖虎纹') || name.includes('抹茶奶绿') || name.includes('椰椰奶冻')) return '🧋'
       if(name.includes('酸奶')) return '🥛'
       if(name.includes('果汁') || name.includes('芒果汁')) return '🧃'
-      if(name.includes('冰沙')) return '🧊'
+      if(name.includes('冰沙') || name.includes('冰')) return '🧊'
       if(name.includes('酸梅汤')) return '🍹'
+      if(name.includes('杨枝甘露')) return '🥭'
+      if(name.includes('芝芝莓莓')) return '🍓'
+      if(name.includes('多肉葡萄')) return '🍇'
+      if(name.includes('蜜桃四季春')) return '🍑'
+      if(name.includes('纯绿研茶')) return '🍵'
+      if(name.includes('四季春')) return '🌸'
 
       // 零食类
       if(name.includes('面包')) return '🍞'
@@ -321,33 +377,47 @@ export default {
       if(name.includes('火腿肠')) return '🌭'
       if(name.includes('方便面') || name.includes('泡面')) return '🍜'
       if(name.includes('薯条')) return '🍟'
-      if(name.includes('冰淇淋') || name.includes('甜筒')) return '🍦'
+      if(name.includes('冰淇淋') || name.includes('甜筒') || name.includes('圣代')) return '🍦'
       if(name.includes('烤布蕾')) return '🍮'
-      if(name.includes('鸡排') || name.includes('鸡柳')) return '🍗'
+      if(name.includes('鸡排') || name.includes('鸡柳') || name.includes('鸡米花')) return '🍗'
       if(name.includes('香肠')) return '🌭'
+      if(name.includes('鸡翅') || name.includes('鸡腿')) return '🍗'
+      if(name.includes('骨肉相连')) return '🍖'
+      if(name.includes('洋葱圈')) return '🧅'
+      if(name.includes('鸡块')) return '🍗'
 
       // 主食类
-      if(name.includes('面条') || name.includes('拉面') || name.includes('炒面') || name.includes('刀削面')) return '🍝'
+      if(name.includes('面条') || name.includes('拉面') || name.includes('炒面') || name.includes('刀削面') || name.includes('葱油拌面')) return '🍝'
       if(name.includes('饺子') || name.includes('蒸饺')) return '🥟'
-      if(name.includes('米饭')) return '🍚'
+      if(name.includes('米饭') || name.includes('炒饭') || name.includes('卤肉饭')) return '🍚'
       if(name.includes('包子')) return '🥟'
-      if(name.includes('汉堡')) return '🍔'
+      if(name.includes('汉堡') || name.includes('牛肉堡') || name.includes('鸡腿堡')) return '🍔'
       if(name.includes('麻辣香锅')) return '🍲'
-      if(name.includes('水煮鱼')) return '🐟'
+      if(name.includes('水煮鱼') || name.includes('酸菜鱼')) return '🐟'
       if(name.includes('回锅肉')) return '🥓'
-      if(name.includes('宫保鸡丁')) return '🍗'
-      if(name.includes('麻婆豆腐') || name.includes('豆腐')) return '🥘'
-      if(name.includes('拌面')) return '🍜'
+      if(name.includes('宫保鸡丁') || name.includes('辣子鸡') || name.includes('口水鸡')) return '🍗'
+      if(name.includes('麻婆豆腐') || name.includes('黄焖豆腐') || name.includes('豆腐')) return '🥘'
+      if(name.includes('拌面') || name.includes('拌米粉') || name.includes('炒米粉')) return '🍜'
       if(name.includes('馄饨')) return '🍲'
       if(name.includes('鸡腿饭')) return '🍗'
       if(name.includes('老鸭汤')) return '🦆'
       if(name.includes('炸鸡')) return '🍗'
       if(name.includes('牛肉面')) return '🍜'
       if(name.includes('凉拌牛肉')) return '🥩'
-      if(name.includes('鸡蛋汤')) return '🥚'
+      if(name.includes('鸡蛋汤') || name.includes('紫菜蛋花汤') || name.includes('紫菜汤')) return '🥚'
       if(name.includes('黄焖鸡')) return '🍗'
-      if(name.includes('黄焖排骨')) return '🐷'
-      if(name.includes('水果拼盘')) return '🥗'
+      if(name.includes('黄焖排骨') || name.includes('黄焖牛肉') || name.includes('黄焖羊肉')) return '🍖'
+      if(name.includes('黄焖茄子')) return '🍆'
+      if(name.includes('水果拼盘') || name.includes('水果沙拉')) return '🥗'
+      if(name.includes('毛血旺')) return '🍲'
+      if(name.includes('鱼香肉丝')) return '🥢'
+      if(name.includes('羊肉泡馍')) return '🥣'
+      if(name.includes('牛肉汤')) return '🥘'
+
+      // 凉菜/小菜类
+      if(name.includes('凉拌黄瓜')) return '🥒'
+      if(name.includes('凉拌木耳')) return '🍄'
+      if(name.includes('卤蛋')) return '🥚'
 
       // 五金工具类
       if(name.includes('螺丝') || name.includes('螺母')) return '🔩'
@@ -361,8 +431,14 @@ export default {
 
       // 日化类
       if(name.includes('洗衣液') || name.includes('洗涤')) return '🧴'
-      if(name.includes('肥皂') || name.includes('香皂')) return '🧼'
+      if(name.includes('洗洁精')) return '🧽'
+      if(name.includes('卫生纸') || name.includes('纸巾')) return '🧻'
       if(name.includes('牙膏')) return '🦷'
+      if(name.includes('洗发水')) return '🧴'
+      if(name.includes('沐浴露')) return '🛁'
+      if(name.includes('肥皂') || name.includes('香皂')) return '🧼'
+      if(name.includes('毛巾')) return '🧣'
+      if(name.includes('牙刷')) return '🪥'
 
       // 默认图标
       return '📦'
@@ -392,6 +468,19 @@ export default {
     async getMyOrders() {
       const {data} = await axios.get('http://localhost:8080/order/user/order')
       this.myOrders = data
+    },
+    async deleteOrder(orderNo, group) {
+      if (!confirm(`确定要删除订单 ${orderNo} 吗？`)) {
+        return
+      }
+      const ids = group.map(item => item.id)
+      try {
+        await axios.post('http://localhost:8080/order/batchDelete', ids)
+        alert('删除成功！')
+        await this.getMyOrders()
+      } catch (error) {
+        alert('删除失败：' + error.message)
+      }
     },
     async loadAddresses() {
       const token = this.getToken()
@@ -494,18 +583,23 @@ export default {
       }
       
       const list = Object.entries(this.cart).map(([pid,qty])=>({
-        productId: parseInt(pid), 
-        quantity: qty, 
+        productId: parseInt(pid),
+        quantity: qty,
         remark: this.remarkList[pid]||''
       }))
-      
+
+      // 构建完整地址字符串
+      const addr = this.selectedAddress
+      const fullAddress = `${addr.province || ''}${addr.city || ''}${addr.district || ''}${addr.detail || ''}`.trim()
+
       // 添加地址信息
       const orderData = {
-        items: list,
-        address: this.selectedAddress
+        cartList: list,
+        address: fullAddress,
+        userPhone: addr.phone || ''
       }
-      
-      await axios.post('http://localhost:8080/order/batchAdd', list)
+
+      await axios.post('http://localhost:8080/order/batchAdd', orderData)
       alert('🎉 下单成功！')
       this.cart = {}
       this.remarkList = {}
@@ -528,10 +622,10 @@ export default {
     },
     
     // 返回商家列表
-    backToSellers() {
+    async backToSellers() {
       this.selectedSeller = null
       this.activeCat = ''
-      this.products = []
+      await this.getProducts()
     },
     
     // 获取商家商品数量
@@ -604,40 +698,57 @@ export default {
 }
 .seller-grid{
   display: flex;
-  flex-wrap: wrap;
-  gap: 25px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
 }
 .seller-card{
-  width: 280px;
+  display: flex;
+  align-items: center;
   background: #fff;
-  border-radius: 16px;
-  padding: 30px 20px;
-  text-align: center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+  border-radius: 12px;
+  padding: 15px 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: box-shadow 0.3s;
 }
 .seller-card:hover{
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 .seller-icon{
-  font-size: 56px;
-  margin-bottom: 15px;
+  font-size: 36px;
+  margin-right: 12px;
+}
+.seller-info{
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .seller-name{
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 10px;
 }
 .seller-status{
-  display: inline-block;
-  padding: 4px 12px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+.seller-product-count{
+  font-size: 13px;
+  color: #888;
+}
+.enter-btn{
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
   border-radius: 20px;
   font-size: 13px;
-  margin-bottom: 12px;
+  font-weight: 500;
+  transition: transform 0.2s;
+}
+.enter-btn:hover{
+  transform: scale(1.02);
 }
 .seller-status.status-active{
   background: #e8f5e9;
@@ -923,6 +1034,32 @@ export default {
 .order-product-item .remark{
   font-size: 13px;
   color: #888;
+}
+.order-info-extra{
+  padding: 10px 16px;
+  background: #f8f9fa;
+  border-top: 1px solid #eee;
+}
+.order-info-extra .info-row{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.order-info-extra .info-row:last-child{
+  margin-bottom: 0;
+}
+.order-info-extra .info-label{
+  color: #666;
+  white-space: nowrap;
+}
+.order-info-extra .info-value{
+  color: #333;
+}
+.order-info-extra .info-value.phone{
+  color: #409eff;
+  font-weight: 500;
 }
 .empty-tip{
   text-align: center;
@@ -1318,4 +1455,17 @@ export default {
 .status-preparing { background: #f4f4f5; color: #909399; }
 .status-delivering { background: #ecf5ff; color: #409eff; }
 .status-done { background: #f0f9eb; color: #67c23a; }
+.delete-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: #fff;
+  color: #f56c6c;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.delete-btn:hover {
+  background: #fef0f0;
+}
 </style>

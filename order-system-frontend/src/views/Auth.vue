@@ -47,14 +47,18 @@
           <input v-model="registerForm.phone" placeholder="请输入联系电话" />
         </div>
         <div v-if="registerForm.role === 'seller'" class="form-item">
-          <label>店铺名称 <span class="required">*</span></label>
-          <input v-model="registerForm.shopName" placeholder="请输入店铺名称" />
-        </div>
-        <div v-if="registerForm.role === 'delivery'" class="form-item">
-          <label>真实姓名 <span class="required">*</span></label>
-          <input v-model="registerForm.realName" placeholder="请输入真实姓名" />
-        </div>
-        <button class="auth-btn" @click="handleRegister">注册</button>
+            <label>店铺名称 <span class="required">*</span></label>
+            <input v-model="registerForm.shopName" placeholder="请输入店铺名称" />
+          </div>
+          <div v-if="registerForm.role === 'seller'" class="form-item">
+            <label>店铺地址 <span class="required">*</span></label>
+            <input v-model="registerForm.shopAddress" placeholder="请输入店铺地址（方便配送员取货）" />
+          </div>
+          <div v-if="registerForm.role === 'delivery'" class="form-item">
+            <label>真实姓名 <span class="required">*</span></label>
+            <input v-model="registerForm.realName" placeholder="请输入真实姓名" />
+          </div>
+          <button class="auth-btn" @click="handleRegister">注册</button>
       </div>
 
       <div class="auth-footer">
@@ -80,6 +84,7 @@ export default {
         role: 'buyer',
         phone: '',
         shopName: '',
+        shopAddress: '',
         realName: ''
       }
     }
@@ -121,6 +126,12 @@ export default {
       // 商家必须填写店铺名称
       if (this.registerForm.role === 'seller' && !this.registerForm.shopName) {
         alert('请填写店铺名称')
+        return
+      }
+      
+      // 商家必须填写店铺地址
+      if (this.registerForm.role === 'seller' && !this.registerForm.shopAddress) {
+        alert('请填写店铺地址')
         return
       }
       

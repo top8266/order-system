@@ -102,39 +102,47 @@
 
       <div class="table-container">
         <h3 class="table-title">📋 订单列表管理</h3>
-        <div class="table-scroll">
-          <table class="order-table">
-            <thead>
-              <tr>
-                <th width="60">选择</th>
-                <th>订单ID</th>
-                <th>订单号</th>
-                <th>商品</th>
-                <th>订单状态</th>
-                <th>用户备注</th>
-                <th width="180">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="order in orders" :key="order.id">
-                <td><input type="checkbox" v-model="selected" :value="order.id" class="check-box"></td>
-                <td>{{ order.id }}</td>
-                <td class="order-no-cell">{{ order.orderNo }}</td>
-                <td>{{ order.productName || '商品#' + order.productId }}</td>
-                <td>
-                  <span class="tag" :class="getStatusClass(order.status)">
-                    {{ order.status }}
-                  </span>
-                </td>
-                <td>{{ order.remark || '无' }}</td>
-                <td>
-                  <button v-if="order.status=='待接单'" class="btn-sm success" @click="confirmOrder(order.id)">确认订单</button>
-                  <button v-if="order.status=='备货中'" class="btn-sm primary" @click="readyOrder(order.id)">备货完成</button>
-                  <button v-if="order.status=='待接单' || order.status=='备货中' || order.status=='待配送'" class="btn-sm danger" @click="del(order.id)">删除</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="order-group-list">
+          <div v-for="(group, orderNo) in groupedOrders" :key="orderNo" class="order-group-card">
+            <div class="order-group-header">
+              <div class="order-info">
+                <span class="order-no-label">订单号：{{ orderNo }}</span>
+                <span class="order-status-tag" :class="getStatusClass(group[0].status)">
+                  {{ group[0].status }}
+                </span>
+              </div>
+              <div class="order-actions">
+                <button v-if="group[0].status=='待接单'" class="btn-sm success" @click="confirmOrderByGroup(group)">确认订单</button>
+                <button v-if="group[0].status=='备货中'" class="btn-sm primary" @click="readyOrderByGroup(group)">备货完成</button>
+                <button v-if="group[0].status=='待接单' || group[0].status=='备货中' || group[0].status=='待配送'" class="btn-sm danger" @click="delByGroup(group)">删除订单</button>
+              </div>
+            </div>
+            <div class="order-group-body">
+              <div class="order-products">
+                <div v-for="item in group" :key="item.id" class="order-product-row">
+                  <span class="product-name">{{ item.productName || '商品#' + item.productId }}</span>
+                  <span class="product-quantity">×{{ item.quantity || 1 }}</span>
+                  <span class="product-price">¥{{ (item.productPrice || 0).toFixed(2) }}</span>
+                </div>
+              </div>
+              <div v-if="group[0].address && group[0].address !== '未填写'" class="order-address">
+                <span class="address-label">📍 收货地址：</span>
+                <span class="address-content">{{ group[0].address }}</span>
+              </div>
+              <div v-if="group[0].userPhone" class="order-user-phone">
+                <span class="phone-label">📞 用户电话：</span>
+                <span class="phone-content">{{ group[0].userPhone }}</span>
+              </div>
+              <div v-if="group[0].remark" class="order-remark">
+                <span class="remark-label">用户备注：</span>
+                <span class="remark-content">{{ group[0].remark }}</span>
+              </div>
+              <div class="order-total">
+                <span class="total-label">订单总额：</span>
+                <span class="total-amount">¥{{ getOrderTotal(group).toFixed(2) }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -294,6 +302,17 @@ export default {
         return this.goodsList
       }
       return this.goodsList.filter(item => item.category === this.selectedCategory)
+    },
+    groupedOrders() {
+      const groups = {}
+      this.orders.forEach(order => {
+        const orderNo = order.orderNo || order.id
+        if (!groups[orderNo]) {
+          groups[orderNo] = []
+        }
+        groups[orderNo].push(order)
+      })
+      return groups
     }
   },
   methods: {
@@ -313,7 +332,11 @@ export default {
       await this.getOrderList()
     },
     async getGoodsList() {
-      const {data} = await axios.get('http://localhost:8080/order/product/list')
+      const userStr = localStorage.getItem('user')
+      const sellerId = userStr ? JSON.parse(userStr).id : null
+      
+      const url = sellerId ? `http://localhost:8080/order/product/list?sellerId=${sellerId}` : 'http://localhost:8080/order/product/list'
+      const {data} = await axios.get(url)
       this.goodsList = data
       const categories = new Set()
       data.forEach(item => {
@@ -321,11 +344,15 @@ export default {
       })
       this.categoryList = Array.from(categories)
       
-      const {data:warn} = await axios.get('http://localhost:8080/order/product/warning')
+      const warnUrl = sellerId ? `http://localhost:8080/order/product/warning?sellerId=${sellerId}` : 'http://localhost:8080/order/product/warning'
+      const {data:warn} = await axios.get(warnUrl)
       this.warningList = warn
     },
     async getOrderList() {
-      const {data} = await axios.get('http://localhost:8080/order/list')
+      const userStr = localStorage.getItem('user')
+      const sellerId = userStr ? JSON.parse(userStr).id : null
+      const url = sellerId ? `http://localhost:8080/order/list?sellerId=${sellerId}` : 'http://localhost:8080/order/list'
+      const {data} = await axios.get(url)
       this.orders = data
       this.selected = []
     },
@@ -433,6 +460,43 @@ export default {
         await axios.post('http://localhost:8080/order/batchDelete', this.selected)
         this.refreshAll()
         alert("批量删除成功")
+      }
+    },
+    
+    getOrderTotal(orderGroup) {
+      return orderGroup.reduce((total, item) => {
+        return total + (item.productPrice || 0) * (item.quantity || 1)
+      }, 0)
+    },
+    
+    async confirmOrderByGroup(orderGroup) {
+      if(confirm('确认订单？订单将进入备货状态')){
+        await axios.post('http://localhost:8080/order/status/update', {
+          orderNo: orderGroup[0].orderNo,
+          status: '备货中'
+        })
+        alert('订单已确认，开始备货')
+        this.refreshAll()
+      }
+    },
+    
+    async readyOrderByGroup(orderGroup) {
+      if(confirm('备货完成？订单将变为待配送状态，等待配送员接单')){
+        await axios.post('http://localhost:8080/order/status/update', {
+          orderNo: orderGroup[0].orderNo,
+          status: '待配送'
+        })
+        alert('备货完成，等待配送员接单')
+        this.refreshAll()
+      }
+    },
+    
+    async delByGroup(orderGroup) {
+      if(confirm('确定要删除该订单？')){
+        const ids = orderGroup.map(o => o.id)
+        await axios.post('http://localhost:8080/order/batchDelete', ids)
+        alert('删除成功')
+        this.refreshAll()
       }
     }
   },
@@ -1102,5 +1166,169 @@ export default {
   .order-table th, .order-table td{
     padding: 12px 8px;
   }
+}
+
+/* 分组订单列表 */
+.order-group-list{
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.order-group-card{
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+  overflow: hidden;
+  transition: all 0.3s;
+}
+.order-group-card:hover{
+  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+.order-group-header{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid #e5e6eb;
+}
+.order-info{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.order-no-label{
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  font-family: monospace;
+}
+.order-status-tag{
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.order-status-tag.tag-wait{
+  background: linear-gradient(135deg, #fdf6ec 0%, #faecd8 100%);
+  color: #e6a23c;
+}
+.order-status-tag.tag-prepare{
+  background: linear-gradient(135deg, #f0f5ff 0%, #e6f0ff 100%);
+  color: #409eff;
+}
+.order-status-tag.tag-delivery{
+  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
+  color: #67c23a;
+}
+.order-status-tag.tag-accepted{
+  background: linear-gradient(135deg, #fff7e6 0%, #ffeeba 100%);
+  color: #fa9800;
+}
+.order-actions{
+  display: flex;
+  gap: 8px;
+}
+.order-group-body{
+  padding: 20px;
+}
+.order-products{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.order-product-row{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fafafa;
+  border-radius: 10px;
+}
+.product-name{
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+}
+.product-quantity{
+  color: #666;
+  font-size: 14px;
+  margin: 0 12px;
+}
+.product-price{
+  font-weight: 600;
+  color: #f56c6c;
+}
+.order-address{
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: #e6f7ff;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.address-label{
+  color: #1890ff;
+  font-size: 14px;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+.address-content{
+  color: #333;
+  font-size: 14px;
+}
+.order-user-phone{
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: #f6ffed;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.phone-label{
+  color: #52c41a;
+  font-size: 14px;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+.phone-content{
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+}
+.order-remark{
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fff5f5;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+.remark-label{
+  color: #999;
+  font-size: 14px;
+  margin-right: 8px;
+}
+.remark-content{
+  color: #e6a23c;
+  font-weight: 500;
+}
+.order-total{
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px dashed #e5e6eb;
+}
+.total-label{
+  color: #666;
+  font-size: 14px;
+  margin-right: 8px;
+}
+.total-amount{
+  font-size: 20px;
+  font-weight: 700;
+  color: #f56c6c;
 }
 </style>
