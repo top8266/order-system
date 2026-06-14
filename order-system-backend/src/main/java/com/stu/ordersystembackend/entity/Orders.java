@@ -14,8 +14,11 @@ public class Orders {
     private String remark;
     private Integer quantity;  // 商品数量
     private String address;    // 收货地址
+    private String userName;   // 用户姓名
     private String userPhone;  // 用户电话
     private String sellerPhone; // 商家电话
+    private String riderName;  // 骑手姓名
+    private String riderPhone; // 骑手电话
 
     public Integer getId() {
         return id;
@@ -89,6 +92,14 @@ public class Orders {
         this.address = address;
     }
 
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
     public String getUserPhone() {
         return userPhone;
     }
@@ -103,5 +114,21 @@ public class Orders {
 
     public void setSellerPhone(String sellerPhone) {
         this.sellerPhone = sellerPhone;
+    }
+
+    public String getRiderName() {
+        return riderName;
+    }
+
+    public void setRiderName(String riderName) {
+        this.riderName = riderName;
+    }
+
+    public String getRiderPhone() {
+        return riderPhone;
+    }
+
+    public void setRiderPhone(String riderPhone) {
+        this.riderPhone = riderPhone;
     }
 }

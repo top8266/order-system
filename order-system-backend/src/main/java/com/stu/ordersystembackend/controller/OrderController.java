@@ -3,8 +3,10 @@ package com.stu.ordersystembackend.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.stu.ordersystembackend.entity.Orders;
 import com.stu.ordersystembackend.entity.Product;
+import com.stu.ordersystembackend.entity.User;
 import com.stu.ordersystembackend.mapper.OrderMapper;
 import com.stu.ordersystembackend.mapper.ProductMapper;
+import com.stu.ordersystembackend.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +25,9 @@ public class OrderController {
 
     @Autowired
     private OrderMapper orderMapper;
+
+    @Autowired
+    private UserMapper userMapper;
 
     // 全部商品（支持按商家过滤）
     @GetMapping("/product/list")
@@ -170,6 +175,13 @@ public class OrderController {
             map.put("productId", order.getProductId());
             map.put("status", order.getStatus());
             map.put("remark", order.getRemark());
+            map.put("quantity", order.getQuantity() != null ? order.getQuantity() : 1);
+            map.put("address", order.getAddress() != null ? order.getAddress() : "未填写");
+            map.put("userName", order.getUserName() != null && !order.getUserName().isEmpty() ? order.getUserName() : "用户" + order.getUserId());
+            map.put("userPhone", order.getUserPhone() != null && !order.getUserPhone().isEmpty() ? order.getUserPhone() : "未填写");
+            map.put("sellerPhone", order.getSellerPhone());  // 商家电话
+            map.put("riderName", order.getRiderName());      // 骑手姓名
+            map.put("riderPhone", order.getRiderPhone());    // 骑手电话
             
             // 获取产品信息
             Product product = productMapper.selectById(order.getProductId());
@@ -191,6 +203,8 @@ public class OrderController {
     public String updateOrderStatus(@RequestBody Map<String, Object> params) {
         String orderNo = (String) params.get("orderNo");
         String status = (String) params.get("status");
+        String riderName = (String) params.get("riderName");
+        String riderPhone = (String) params.get("riderPhone");
         
         LambdaQueryWrapper<Orders> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Orders::getOrderNo, orderNo);
@@ -198,6 +212,12 @@ public class OrderController {
         
         for (Orders order : orders) {
             order.setStatus(status);
+            if (riderName != null) {
+                order.setRiderName(riderName);
+            }
+            if (riderPhone != null) {
+                order.setRiderPhone(riderPhone);
+            }
             orderMapper.updateById(order);
         }
         return "success";
@@ -222,6 +242,8 @@ public class OrderController {
             map.put("quantity", order.getQuantity() != null ? order.getQuantity() : 1);  // 返回数量
             map.put("address", order.getAddress() != null ? order.getAddress() : "未填写");
             map.put("sellerPhone", order.getSellerPhone());  // 商家电话
+            map.put("riderName", order.getRiderName());      // 骑手姓名
+            map.put("riderPhone", order.getRiderPhone());    // 骑手电话
             
             // 获取产品信息
             Product product = productMapper.selectById(order.getProductId());
@@ -291,6 +313,7 @@ public class OrderController {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> cartList = (List<Map<String, Object>>) request.get("cartList");
         String address = (String) request.get("address");
+        String userName = (String) request.get("userName");
         String userPhone = (String) request.get("userPhone");
         
         // 按商家ID分组商品
@@ -313,16 +336,14 @@ public class OrderController {
         // 为每个商家创建独立订单
         for (java.util.Map.Entry<Integer, java.util.List<Map<String, Object>>> entry : sellerGroups.entrySet()) {
             String orderNo = generateOrderNo();  // 每个商家一个订单号
+            Integer sellerId = entry.getKey();
             java.util.List<Map<String, Object>> items = entry.getValue();
             
-            // 获取商家电话（从第一个商品获取）
+            // 获取商家电话（从用户表获取）
             String sellerPhone = null;
-            if (!items.isEmpty()) {
-                Integer firstProductId = (Integer) items.get(0).get("productId");
-                Product firstProduct = productMapper.selectById(firstProductId);
-                if (firstProduct != null) {
-                    sellerPhone = firstProduct.getSellerPhone();
-                }
+            User seller = userMapper.selectById(sellerId);
+            if (seller != null) {
+                sellerPhone = seller.getPhone();
             }
             
             for (Map<String, Object> cartItem : items) {
@@ -346,6 +367,7 @@ public class OrderController {
                 order.setRemark(remark);
                 order.setQuantity(quantity);
                 order.setAddress(address);
+                order.setUserName(userName);
                 order.setUserPhone(userPhone);
                 order.setSellerPhone(sellerPhone);
                 orderMapper.insert(order);
