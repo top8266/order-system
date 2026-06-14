@@ -24,10 +24,14 @@ public class OrderController {
     @Autowired
     private OrderMapper orderMapper;
 
-    // 全部商品
+    // 全部商品（支持按商家过滤）
     @GetMapping("/product/list")
-    public List<Product> getProducts() {
-        return productMapper.selectList(null);
+    public List<Product> getProducts(@RequestParam(required = false) Integer sellerId) {
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        if (sellerId != null) {
+            wrapper.eq(Product::getSellerId, sellerId);
+        }
+        return productMapper.selectList(wrapper);
     }
 
     // 按分类查询商品
@@ -49,11 +53,14 @@ public class OrderController {
         return productMapper.selectList(wrapper);
     }
 
-    // 库存预警商品
+    // 库存预警商品（支持按商家过滤）
     @GetMapping("/product/warning")
-    public List<Product> getWarningProduct() {
+    public List<Product> getWarningProduct(@RequestParam(required = false) Integer sellerId) {
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
         wrapper.lt(Product::getStock, 10);
+        if (sellerId != null) {
+            wrapper.eq(Product::getSellerId, sellerId);
+        }
         return productMapper.selectList(wrapper);
     }
 
@@ -105,10 +112,43 @@ public class OrderController {
         return productMapper.selectById(id);
     }
 
-    // 全部订单
+    // 全部订单（可选按商家ID过滤）
     @GetMapping("/list")
-    public List<Orders> getOrders() {
-        return orderMapper.selectList(null);
+    public List<Map<String, Object>> getOrders(@RequestParam(required = false) Integer sellerId) {
+        LambdaQueryWrapper<Orders> wrapper = new LambdaQueryWrapper<>();
+        if (sellerId != null) {
+            wrapper.eq(Orders::getSellerId, sellerId);
+        }
+        wrapper.orderByDesc(Orders::getId);
+        List<Orders> orders = orderMapper.selectList(wrapper);
+        
+        // 转换为包含产品信息的Map
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (Orders order : orders) {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", order.getId());
+            map.put("orderNo", order.getOrderNo());
+            map.put("productId", order.getProductId());
+            map.put("status", order.getStatus());
+            map.put("remark", order.getRemark());
+            map.put("quantity", order.getQuantity() != null ? order.getQuantity() : 1);
+            map.put("address", order.getAddress() != null ? order.getAddress() : "未填写");
+            map.put("userPhone", order.getUserPhone());
+            map.put("sellerPhone", order.getSellerPhone());
+            
+            // 获取产品信息
+            Product product = productMapper.selectById(order.getProductId());
+            if (product != null) {
+                map.put("productName", product.getName());
+                map.put("productPrice", product.getPrice());
+            } else {
+                map.put("productName", "商品ID:" + order.getProductId() + "(已删除)");
+                map.put("productPrice", 0);
+            }
+            
+            result.add(map);
+        }
+        return result;
     }
 
     // 按状态查询订单
@@ -136,6 +176,9 @@ public class OrderController {
             if (product != null) {
                 map.put("productName", product.getName());
                 map.put("productPrice", product.getPrice());
+            } else {
+                map.put("productName", "商品ID:" + order.getProductId() + "(已删除)");
+                map.put("productPrice", 0);
             }
             
             result.add(map);
@@ -162,18 +205,37 @@ public class OrderController {
 
     // 用户历史订单
     @GetMapping("/user/order")
-    public List<Orders> getUserOrder() {
+    public List<Map<String, Object>> getUserOrder() {
         LambdaQueryWrapper<Orders> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Orders::getUserId, 1);
         wrapper.orderByDesc(Orders::getId);
         List<Orders> orders = orderMapper.selectList(wrapper);
         
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
         for (Orders order : orders) {
-            if (order.getOrderNo() == null || order.getOrderNo().isEmpty()) {
-                order.setOrderNo("OLD-" + order.getId());
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", order.getId());
+            map.put("orderNo", order.getOrderNo() != null && !order.getOrderNo().isEmpty() ? order.getOrderNo() : "OLD-" + order.getId());
+            map.put("productId", order.getProductId());
+            map.put("status", order.getStatus());
+            map.put("remark", order.getRemark());
+            map.put("quantity", order.getQuantity() != null ? order.getQuantity() : 1);  // 返回数量
+            map.put("address", order.getAddress() != null ? order.getAddress() : "未填写");
+            map.put("sellerPhone", order.getSellerPhone());  // 商家电话
+            
+            // 获取产品信息
+            Product product = productMapper.selectById(order.getProductId());
+            if (product != null) {
+                map.put("productName", product.getName());
+                map.put("productPrice", product.getPrice());
+            } else {
+                map.put("productName", "商品ID:" + order.getProductId() + "(已删除)");
+                map.put("productPrice", 0);
             }
+            
+            result.add(map);
         }
-        return orders;
+        return result;
     }
 
     @PostMapping("/add")
@@ -223,30 +285,71 @@ public class OrderController {
                String.format("%04d", (int) (Math.random() * 10000));
     }
 
-    // 购物车批量下单
+    // 购物车批量下单（按商家分组）
     @PostMapping("/batchAdd")
-    public String batchAddOrder(@RequestBody List<Map<String, Object>> cartList) {
-        String orderNo = generateOrderNo();
+    public String batchAddOrder(@RequestBody Map<String, Object> request) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> cartList = (List<Map<String, Object>>) request.get("cartList");
+        String address = (String) request.get("address");
+        String userPhone = (String) request.get("userPhone");
+        
+        // 按商家ID分组商品
+        java.util.Map<Integer, java.util.List<Map<String, Object>>> sellerGroups = new java.util.HashMap<>();
         
         for (Map<String, Object> cartItem : cartList) {
             Integer productId = (Integer) cartItem.get("productId");
-            Integer quantity = (Integer) cartItem.get("quantity");
-            String remark = (String) cartItem.get("remark");
-
             Product product = productMapper.selectById(productId);
-            if (product.getStock() < quantity) {
-                return "库存不足";
+            if (product == null) {
+                return "商品不存在";
             }
-            product.setStock(product.getStock() - quantity);
-            productMapper.updateById(product);
+            Integer sellerId = product.getSellerId();
+            
+            if (!sellerGroups.containsKey(sellerId)) {
+                sellerGroups.put(sellerId, new java.util.ArrayList<>());
+            }
+            sellerGroups.get(sellerId).add(cartItem);
+        }
+        
+        // 为每个商家创建独立订单
+        for (java.util.Map.Entry<Integer, java.util.List<Map<String, Object>>> entry : sellerGroups.entrySet()) {
+            String orderNo = generateOrderNo();  // 每个商家一个订单号
+            java.util.List<Map<String, Object>> items = entry.getValue();
+            
+            // 获取商家电话（从第一个商品获取）
+            String sellerPhone = null;
+            if (!items.isEmpty()) {
+                Integer firstProductId = (Integer) items.get(0).get("productId");
+                Product firstProduct = productMapper.selectById(firstProductId);
+                if (firstProduct != null) {
+                    sellerPhone = firstProduct.getSellerPhone();
+                }
+            }
+            
+            for (Map<String, Object> cartItem : items) {
+                Integer productId = (Integer) cartItem.get("productId");
+                Integer quantity = (Integer) cartItem.get("quantity");
+                String remark = (String) cartItem.get("remark");
 
-            Orders order = new Orders();
-            order.setOrderNo(orderNo);
-            order.setProductId(productId);
-            order.setUserId(1);
-            order.setStatus("待接单");  // 已支付，等待接单
-            order.setRemark(remark);
-            orderMapper.insert(order);
+                Product product = productMapper.selectById(productId);
+                if (product.getStock() < quantity) {
+                    return "商品ID:" + productId + "库存不足";
+                }
+                product.setStock(product.getStock() - quantity);
+                productMapper.updateById(product);
+
+                Orders order = new Orders();
+                order.setOrderNo(orderNo);
+                order.setProductId(productId);
+                order.setUserId(1);
+                order.setSellerId(product.getSellerId());
+                order.setStatus("待接单");
+                order.setRemark(remark);
+                order.setQuantity(quantity);
+                order.setAddress(address);
+                order.setUserPhone(userPhone);
+                order.setSellerPhone(sellerPhone);
+                orderMapper.insert(order);
+            }
         }
         return "success";
     }

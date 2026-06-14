@@ -12,6 +12,10 @@ public class Orders {
     private Integer sellerId;  // 商家ID
     private String status;
     private String remark;
+    private Integer quantity;  // 商品数量
+    private String address;    // 收货地址
+    private String userPhone;  // 用户电话
+    private String sellerPhone; // 商家电话
 
     public Integer getId() {
         return id;
@@ -67,5 +71,37 @@ public class Orders {
 
     public void setRemark(String remark) {
         this.remark = remark;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getUserPhone() {
+        return userPhone;
+    }
+
+    public void setUserPhone(String userPhone) {
+        this.userPhone = userPhone;
+    }
+
+    public String getSellerPhone() {
+        return sellerPhone;
+    }
+
+    public void setSellerPhone(String sellerPhone) {
+        this.sellerPhone = sellerPhone;
     }
 }

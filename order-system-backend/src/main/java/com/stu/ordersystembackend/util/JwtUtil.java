@@ -14,7 +14,9 @@ import java.util.Map;
 @Component
 public class JwtUtil {
     
-    private static final SecretKey SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    // 使用固定密钥，避免重启后token失效
+    private static final String SECRET_STRING = "order-system-backend-fixed-secret-key-2024";
+    private static final SecretKey SECRET_KEY = Keys.hmacShaKeyFor(SECRET_STRING.getBytes());
     private static final long EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24小时
 
     // 生成Token

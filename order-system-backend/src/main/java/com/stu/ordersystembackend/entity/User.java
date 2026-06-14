@@ -17,6 +17,7 @@ public class User {
     private String avatar;        // 头像URL
     private String shopName;      // 商家店铺名称
     private String shopNotice;    // 商家店铺公告
+    private String shopAddress;   // 商家店铺地址（用于配送员取货）
     private String defaultAddress; // 用户默认收货地址
     private String realName;      // 配送员真实姓名
 }

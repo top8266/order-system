@@ -11,6 +11,7 @@ public class Product {
     private Integer stock;
     private String category;
     private Integer sellerId;  // 归属商家ID
+    private String sellerPhone; // 商家联系电话
 
     public Integer getId() {
         return id;
@@ -58,5 +59,13 @@ public class Product {
 
     public void setSellerId(Integer sellerId) {
         this.sellerId = sellerId;
+    }
+
+    public String getSellerPhone() {
+        return sellerPhone;
+    }
+
+    public void setSellerPhone(String sellerPhone) {
+        this.sellerPhone = sellerPhone;
     }
 }

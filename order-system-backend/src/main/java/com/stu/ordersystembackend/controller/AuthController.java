@@ -135,6 +135,7 @@ public class AuthController {
         info.put("phone", user.getPhone());
         info.put("avatar", user.getAvatar());
         info.put("shopName", user.getShopName());
+        info.put("shopAddress", user.getShopAddress());
         info.put("shopNotice", user.getShopNotice());
         info.put("defaultAddress", user.getDefaultAddress());
         info.put("realName", user.getRealName());
