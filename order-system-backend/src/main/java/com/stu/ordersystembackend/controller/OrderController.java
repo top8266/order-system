@@ -32,17 +32,20 @@ public class OrderController {
 
     // 按分类查询商品
     @GetMapping("/product/category")
-    public List<Product> getProductByCategory(@RequestParam String category) {
+    public List<Product> getProductByCategory(@RequestParam String category, @RequestParam(required = false) Integer sellerId) {
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Product::getCategory, category);
+        if (sellerId != null) {
+            wrapper.eq(Product::getSellerId, sellerId);
+        }
         return productMapper.selectList(wrapper);
     }
 
-    // 按商家查询商品（包含未分配的商品）
+    // 按商家查询商品
     @GetMapping("/product/seller/{sellerId}")
     public List<Product> getProductsBySeller(@PathVariable Integer sellerId) {
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Product::getSellerId, sellerId).or().isNull(Product::getSellerId);
+        wrapper.eq(Product::getSellerId, sellerId);
         return productMapper.selectList(wrapper);
     }
 

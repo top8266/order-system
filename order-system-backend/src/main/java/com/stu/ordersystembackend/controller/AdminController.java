@@ -116,6 +116,37 @@ public class AdminController {
         return "success";
     }
 
+    // 更新用户信息
+    @PostMapping("/seller/update")
+    public String updateSeller(@RequestBody User user) {
+        Integer id = user.getId();
+        if (id == null) {
+            return "用户ID不能为空";
+        }
+        User existingUser = userMapper.selectById(id);
+        if (existingUser == null) {
+            return "用户不存在";
+        }
+        
+        // 更新可修改的字段
+        if (user.getUsername() != null) {
+            existingUser.setUsername(user.getUsername());
+        }
+        if (user.getPhone() != null) {
+            existingUser.setPhone(user.getPhone());
+        }
+        if (user.getShopName() != null) {
+            existingUser.setShopName(user.getShopName());
+        }
+        if (user.getRealName() != null) {
+            existingUser.setRealName(user.getRealName());
+        }
+        
+        userMapper.updateById(existingUser);
+        addLog("修改", "修改用户信息: " + existingUser.getUsername());
+        return "success";
+    }
+    
     // 获取待审核用户列表
     @GetMapping("/pending")
     public List<User> getPendingUsers() {

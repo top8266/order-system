@@ -1,4 +1,3 @@
-com\stu\ordersystembackend\config\DataInitializer.class
 com\stu\ordersystembackend\entity\Orders.class
 com\stu\ordersystembackend\config\SecurityConfig.class
 com\stu\ordersystembackend\entity\Product.class
