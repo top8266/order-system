@@ -194,7 +194,18 @@
                 <span class="info-label">📍 地址：</span>
                 <span class="info-value">{{ group[0].address }}</span>
               </div>
-              <div v-if="group[0].sellerPhone" class="info-row">
+              <!-- 备货阶段显示商家信息 -->
+              <div v-if="['备货', '备货中', '待配送'].includes(group[0].status) && group[0].sellerPhone" class="info-row">
+                <span class="info-label">🏪 商家电话：</span>
+                <span class="info-value phone">{{ group[0].sellerPhone }}</span>
+              </div>
+              <!-- 配送阶段显示骑手信息 -->
+              <div v-if="group[0].status === '配送中'" class="info-row">
+                <span class="info-label">🚴 骑手：</span>
+                <span class="info-value phone">{{ group[0].riderName || '骑手' }} {{ group[0].riderPhone || '' }}</span>
+              </div>
+              <!-- 其他状态显示商家电话 -->
+              <div v-if="!['备货', '备货中', '待配送', '配送中'].includes(group[0].status) && group[0].sellerPhone" class="info-row">
                 <span class="info-label">📞 商家电话：</span>
                 <span class="info-value phone">{{ group[0].sellerPhone }}</span>
               </div>
@@ -596,6 +607,7 @@ export default {
       const orderData = {
         cartList: list,
         address: fullAddress,
+        userName: addr.name || '',
         userPhone: addr.phone || ''
       }
 

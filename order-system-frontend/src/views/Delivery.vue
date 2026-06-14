@@ -14,12 +14,28 @@
           </div>
           <div class="order-products">
             <div v-for="item in order.items" :key="item.productId" class="product-item">
-              <span>{{ item.productName }}</span>
-              <span>× {{ item.quantity }}</span>
+              <span class="product-name">{{ item.productName }}</span>
+              <span class="product-quantity">× {{ item.quantity }}</span>
+              <span class="product-price">¥{{ (item.productPrice || 0).toFixed(2) }}</span>
+            </div>
+            <div class="order-total">
+              <span class="total-label">订单总额：</span>
+              <span class="total-amount">¥{{ getOrderTotal(order).toFixed(2) }}</span>
             </div>
           </div>
           <div class="order-info">
-            <span>📍 地址：{{ order.address || '未填写' }}</span>
+            <div class="info-row">
+              <span class="info-label">👤 姓名：</span>
+              <span class="info-value">{{ order.userName }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">📞 电话：</span>
+              <span class="info-value phone">{{ order.userPhone }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">📍 地址：</span>
+              <span class="info-value address">{{ order.address }}</span>
+            </div>
           </div>
           <div class="order-actions">
             <button class="accept-btn" @click="acceptOrder(order.orderNo)">接单配送</button>
@@ -40,12 +56,28 @@
           </div>
           <div class="order-products">
             <div v-for="item in order.items" :key="item.productId" class="product-item">
-              <span>{{ item.productName }}</span>
-              <span>× {{ item.quantity }}</span>
+              <span class="product-name">{{ item.productName }}</span>
+              <span class="product-quantity">× {{ item.quantity }}</span>
+              <span class="product-price">¥{{ (item.productPrice || 0).toFixed(2) }}</span>
+            </div>
+            <div class="order-total">
+              <span class="total-label">订单总额：</span>
+              <span class="total-amount">¥{{ getOrderTotal(order).toFixed(2) }}</span>
             </div>
           </div>
           <div class="order-info">
-            <span>📍 地址：{{ order.address || '未填写' }}</span>
+            <div class="info-row">
+              <span class="info-label">👤 姓名：</span>
+              <span class="info-value">{{ order.userName }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">📞 电话：</span>
+              <span class="info-value phone">{{ order.userPhone }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">📍 地址：</span>
+              <span class="info-value address">{{ order.address }}</span>
+            </div>
           </div>
           <div class="order-actions">
             <button class="complete-btn" @click="completeOrder(order.orderNo)">确认送达</button>
@@ -66,12 +98,28 @@
           </div>
           <div class="order-products">
             <div v-for="item in order.items" :key="item.productId" class="product-item">
-              <span>{{ item.productName }}</span>
-              <span>× {{ item.quantity }}</span>
+              <span class="product-name">{{ item.productName }}</span>
+              <span class="product-quantity">× {{ item.quantity }}</span>
+              <span class="product-price">¥{{ (item.productPrice || 0).toFixed(2) }}</span>
+            </div>
+            <div class="order-total">
+              <span class="total-label">订单总额：</span>
+              <span class="total-amount">¥{{ getOrderTotal(order).toFixed(2) }}</span>
             </div>
           </div>
           <div class="order-info">
-            <span>📍 地址：{{ order.address || '未填写' }}</span>
+            <div class="info-row">
+              <span class="info-label">👤 姓名：</span>
+              <span class="info-value">{{ order.userName }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">📞 电话：</span>
+              <span class="info-value phone">{{ order.userPhone }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">📍 地址：</span>
+              <span class="info-value address">{{ order.address }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -115,14 +163,18 @@ export default {
             orderMap[orderNo] = {
               orderNo: orderNo,
               status: item.status,
-              address: item.remark || '未填写',
+              address: item.address || item.userAddress || '未填写',
+              userName: item.userName || item.name || '未知',
+              userPhone: item.userPhone || item.phone || '未填写',
+              remark: item.remark || '',
               items: []
             }
           }
           orderMap[orderNo].items.push({
             productId: item.productId,
             productName: item.productName || '商品#' + item.productId,
-            quantity: 1
+            quantity: item.quantity || 1,
+            productPrice: item.productPrice || 0
           })
         }
         
@@ -138,9 +190,16 @@ export default {
     async acceptOrder(orderNo) {
       if (!confirm('确定要接下这个订单进行配送？')) return
       try {
+        // 从本地存储获取骑手信息
+        const riderInfo = JSON.parse(localStorage.getItem('user') || '{}')
+        const riderName = riderInfo.realName || riderInfo.username || '骑手'
+        const riderPhone = riderInfo.phone || ''
+        
         await axios.post('http://localhost:8080/order/status/update', {
           orderNo,
-          status: '配送中'
+          status: '配送中',
+          riderName: riderName,
+          riderPhone: riderPhone
         })
         alert('接单成功！开始配送')
         this.loadOrders()
@@ -160,6 +219,9 @@ export default {
       } catch (e) {
         alert('操作失败：' + (e.response?.data?.message || e.message))
       }
+    },
+    getOrderTotal(order) {
+      return order.items.reduce((sum, item) => sum + (item.productPrice || 0) * (item.quantity || 1), 0)
     }
   }
 }
@@ -189,6 +251,23 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 15px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+.order-list::-webkit-scrollbar {
+  width: 6px;
+}
+.order-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+.order-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+.order-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 .empty {
   text-align: center;
@@ -257,9 +336,35 @@ h2 {
   border-bottom: none;
 }
 .order-info {
-  color: #666;
-  font-size: 14px;
   margin-bottom: 12px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+.order-info .info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.order-info .info-row:last-child {
+  margin-bottom: 0;
+}
+.order-info .info-label {
+  color: #666;
+  white-space: nowrap;
+}
+.order-info .info-value {
+  color: #333;
+  flex: 1;
+}
+.order-info .info-value.phone {
+  color: #409eff;
+  font-weight: 500;
+}
+.order-info .info-value.address {
+  color: #67c23a;
 }
 .order-actions {
   display: flex;

@@ -125,13 +125,13 @@
                   <span class="product-price">¥{{ (item.productPrice || 0).toFixed(2) }}</span>
                 </div>
               </div>
-              <div v-if="group[0].address && group[0].address !== '未填写'" class="order-address">
+              <div class="order-address">
                 <span class="address-label">📍 收货地址：</span>
-                <span class="address-content">{{ group[0].address }}</span>
+                <span class="address-content">{{ group[0].address || '未填写' }}</span>
               </div>
-              <div v-if="group[0].userPhone" class="order-user-phone">
+              <div class="order-user-phone">
                 <span class="phone-label">📞 用户电话：</span>
-                <span class="phone-content">{{ group[0].userPhone }}</span>
+                <span class="phone-content">{{ group[0].userPhone || '未填写' }}</span>
               </div>
               <div v-if="group[0].remark" class="order-remark">
                 <span class="remark-label">用户备注：</span>
@@ -855,6 +855,8 @@ export default {
   padding: 30px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.1);
   animation: slideDown 0.4s ease;
+  max-height: none;
+  overflow: visible;
 }
 @keyframes slideDown {
   from {
@@ -923,6 +925,8 @@ export default {
   background: #fafafa;
   border-radius: 16px;
   padding: 24px;
+  max-height: none;
+  overflow: visible;
 }
 .table-title{
   font-size: 18px;
@@ -1173,12 +1177,33 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: #999999 #e8eaed;
+}
+.order-group-list::-webkit-scrollbar {
+  width: 10px;
+}
+.order-group-list::-webkit-scrollbar-track {
+  background: #e8eaed;
+  border-radius: 5px;
+}
+.order-group-list::-webkit-scrollbar-thumb {
+  background: #999999;
+  border-radius: 5px;
+  border: 2px solid #e8eaed;
+}
+.order-group-list::-webkit-scrollbar-thumb:hover {
+  background: #666666;
 }
 .order-group-card{
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-  overflow: hidden;
+  overflow: visible;
   transition: all 0.3s;
 }
 .order-group-card:hover{
