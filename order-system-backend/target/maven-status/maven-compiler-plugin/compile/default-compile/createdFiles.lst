@@ -2,6 +2,7 @@ com\stu\ordersystembackend\config\DataInitializer.class
 com\stu\ordersystembackend\entity\Orders.class
 com\stu\ordersystembackend\config\SecurityConfig.class
 com\stu\ordersystembackend\entity\Product.class
+com\stu\ordersystembackend\config\CorsConfig.class
 com\stu\ordersystembackend\mapper\UserMapper.class
 com\stu\ordersystembackend\controller\AuthController.class
 com\stu\ordersystembackend\controller\AddressController.class
