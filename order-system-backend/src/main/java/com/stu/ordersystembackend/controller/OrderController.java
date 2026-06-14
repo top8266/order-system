@@ -38,6 +38,14 @@ public class OrderController {
         return productMapper.selectList(wrapper);
     }
 
+    // 按商家查询商品（包含未分配的商品）
+    @GetMapping("/product/seller/{sellerId}")
+    public List<Product> getProductsBySeller(@PathVariable Integer sellerId) {
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Product::getSellerId, sellerId).or().isNull(Product::getSellerId);
+        return productMapper.selectList(wrapper);
+    }
+
     // 库存预警商品
     @GetMapping("/product/warning")
     public List<Product> getWarningProduct() {

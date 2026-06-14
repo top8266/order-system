@@ -9,6 +9,7 @@ public class Orders {
     private String orderNo;
     private Integer productId;
     private Integer userId;
+    private Integer sellerId;  // 商家ID
     private String status;
     private String remark;
 
@@ -42,6 +43,14 @@ public class Orders {
 
     public void setUserId(Integer userId) {
         this.userId = userId;
+    }
+
+    public Integer getSellerId() {
+        return sellerId;
+    }
+
+    public void setSellerId(Integer sellerId) {
+        this.sellerId = sellerId;
     }
 
     public String getStatus() {

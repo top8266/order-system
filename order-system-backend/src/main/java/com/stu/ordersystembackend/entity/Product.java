@@ -10,6 +10,7 @@ public class Product {
     private Double price;
     private Integer stock;
     private String category;
+    private Integer sellerId;  // 归属商家ID
 
     public Integer getId() {
         return id;
@@ -49,5 +50,13 @@ public class Product {
 
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    public Integer getSellerId() {
+        return sellerId;
+    }
+
+    public void setSellerId(Integer sellerId) {
+        this.sellerId = sellerId;
     }
 }

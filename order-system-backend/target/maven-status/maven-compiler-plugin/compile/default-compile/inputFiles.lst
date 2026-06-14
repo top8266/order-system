@@ -8,6 +8,7 @@ C:\Users\赵和涛\Desktop\order-system-backend\src\main\java\com\stu\ordersyste
 C:\Users\赵和涛\Desktop\order-system-backend\src\main\java\com\stu\ordersystembackend\entity\Orders.java
 C:\Users\赵和涛\Desktop\order-system-backend\src\main\java\com\stu\ordersystembackend\util\JwtUtil.java
 C:\Users\赵和涛\Desktop\order-system-backend\src\main\java\com\stu\ordersystembackend\entity\User.java
+C:\Users\赵和涛\Desktop\order-system-backend\src\main\java\com\stu\ordersystembackend\config\GlobalExceptionHandler.java
 C:\Users\赵和涛\Desktop\order-system-backend\src\main\java\com\stu\ordersystembackend\config\DataInitializer.java
 C:\Users\赵和涛\Desktop\order-system-backend\src\main\java\com\stu\ordersystembackend\controller\AddressController.java
 C:\Users\赵和涛\Desktop\order-system-backend\src\main\java\com\stu\ordersystembackend\mapper\OrderMapper.java

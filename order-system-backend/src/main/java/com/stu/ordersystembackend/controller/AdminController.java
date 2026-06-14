@@ -1,7 +1,9 @@
 package com.stu.ordersystembackend.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.stu.ordersystembackend.entity.Product;
 import com.stu.ordersystembackend.entity.User;
+import com.stu.ordersystembackend.mapper.ProductMapper;
 import com.stu.ordersystembackend.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -17,14 +19,31 @@ public class AdminController {
 
     @Autowired
     private UserMapper userMapper;
+    
+    @Autowired
+    private ProductMapper productMapper;
 
-    // 获取所有商家和配送员
+    // 获取所有商家
     @GetMapping("/sellers")
     public List<User> getSellers() {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(User::getRole, "seller", "delivery");
+        wrapper.eq(User::getRole, "seller");
         List<User> users = userMapper.selectList(wrapper);
         // 确保status有值
+        for (User user : users) {
+            if (user.getStatus() == null) {
+                user.setStatus(1);
+            }
+        }
+        return users;
+    }
+
+    // 获取所有配送员
+    @GetMapping("/delivery")
+    public List<User> getDelivery() {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getRole, "delivery");
+        List<User> users = userMapper.selectList(wrapper);
         for (User user : users) {
             if (user.getStatus() == null) {
                 user.setStatus(1);
@@ -127,5 +146,40 @@ public class AdminController {
         log.put("content", content);
         log.put("time", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         logs.add(log);
+    }
+    
+    // 批量分配商品给商家
+    @PostMapping("/product/assign")
+    public String assignProductsToSeller(@RequestBody Map<String, Object> params) {
+        Integer sellerId = (Integer) params.get("sellerId");
+        @SuppressWarnings("unchecked")
+        List<Integer> productIds = (List<Integer>) params.get("productIds");
+        
+        if (sellerId == null) {
+            return "商家ID不能为空";
+        }
+        if (productIds == null || productIds.isEmpty()) {
+            return "请选择要分配的商品";
+        }
+        
+        for (Integer productId : productIds) {
+            Product product = productMapper.selectById(productId);
+            if (product != null) {
+                product.setSellerId(sellerId);
+                productMapper.updateById(product);
+            }
+        }
+        
+        User seller = userMapper.selectById(sellerId);
+        addLog("分配", "分配" + productIds.size() + "件商品给商家: " + (seller != null ? seller.getUsername() : "未知"));
+        return "success";
+    }
+    
+    // 获取未分配商家的商品列表
+    @GetMapping("/product/unassigned")
+    public List<Product> getUnassignedProducts() {
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        wrapper.isNull(Product::getSellerId);
+        return productMapper.selectList(wrapper);
     }
 }
