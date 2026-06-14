@@ -38,12 +38,12 @@ const requireAuth = (to, from, next) => {
 }
 
 const routes = [
-  { path: '/', redirect: '/buyer' },
+  { path: '/', redirect: '/auth' },
+  { path: '/auth', name: 'Auth', component: Auth },
   { path: '/buyer', name: 'Buyer', component: Buyer, meta: { role: 'buyer' } },
   { path: '/seller', name: 'Seller', component: Seller, meta: { role: 'seller' } },
   { path: '/delivery', name: 'Delivery', component: Delivery, meta: { role: 'delivery' } },
   { path: '/admin', name: 'Admin', component: Admin, meta: { role: 'admin' } },
-  { path: '/auth', name: 'Auth', component: Auth },
   { path: '/address', name: 'AddressManager', component: AddressManager }
 ]
 

@@ -2,36 +2,72 @@
   <div class="container">
     <h2 class="page-title">在线点餐商城</h2>
 
-    <!-- 分类标签栏 -->
-    <div class="category-tabs">
-      <button :class="{active: activeCat === ''}" @click="getProducts()">全部商品</button>
-      <button :class="{active: activeCat === '饮料'}" @click="getByCategory('饮料')">饮料</button>
-      <button :class="{active: activeCat === '零食'}" @click="getByCategory('零食')">零食</button>
-      <button :class="{active: activeCat === '主食'}" @click="getByCategory('主食')">主食</button>
-      <button :class="{active: activeCat === '水果'}" @click="getByCategory('水果')">水果</button>
-      <button :class="{active: activeCat === '五金'}" @click="getByCategory('五金')">五金</button>
-      <button :class="{active: activeCat === '文具'}" @click="getByCategory('文具')">文具</button>
+    <!-- 返回商家列表按钮 -->
+    <div v-if="selectedSeller" class="back-button">
+      <button @click="backToSellers" class="back-btn">
+        ← 返回商家列表
+      </button>
+      <span class="current-seller">当前店铺：{{ selectedSeller.username }}</span>
     </div>
 
-    <!-- 商品列表 -->
-    <div class="product-container">
-      <div class="product-list">
-        <div class="product-card" v-for="product in products" :key="product.id">
-          <!-- 核心：自动匹配Emoji -->
-          <div class="product-icon">
-            {{ getProductEmoji(product.name) }}
-          </div>
-          <h3 class="product-name">{{ product.name }}</h3>
-          <p class="price">¥{{ product.price }}</p>
-          <p class="stock" :class="{'low':product.stock < 5}">库存：{{ product.stock }}</p>
+    <!-- 商家列表视图 -->
+    <div v-if="!selectedSeller" class="seller-container">
+      <h3 class="section-title">🏪 选择商家</h3>
+      <div class="seller-grid">
+        <div 
+          v-for="seller in sellers" 
+          :key="seller.id" 
+          class="seller-card"
+          @click="enterSeller(seller)"
+        >
+          <div class="seller-icon">🏬</div>
+          <h3 class="seller-name">{{ seller.username }}</h3>
+          <p class="seller-status" :class="seller.auditStatus === 1 ? 'status-active' : 'status-pending'">
+            {{ seller.auditStatus === 1 ? '营业中' : '待审核' }}
+          </p>
+          <p class="seller-product-count">{{ getSellerProductCount(seller.id) }} 件商品</p>
+          <div class="enter-btn">进入店铺 →</div>
+        </div>
+      </div>
+    </div>
 
-          <div class="num-control">
-            <button @click="dec(product.id)">-</button>
-            <span>{{ cart[product.id] || 0 }}</span>
-            <button @click="add(product.id, product.stock)">+</button>
-          </div>
+    <!-- 商品列表视图 -->
+    <div v-else>
+      <!-- 分类标签栏 -->
+      <div class="category-tabs">
+        <button :class="{active: activeCat === ''}" @click="getProducts()">全部商品</button>
+        <button :class="{active: activeCat === '饮料'}" @click="getByCategory('饮料')">饮料</button>
+        <button :class="{active: activeCat === '零食'}" @click="getByCategory('零食')">零食</button>
+        <button :class="{active: activeCat === '主食'}" @click="getByCategory('主食')">主食</button>
+        <button :class="{active: activeCat === '水果'}" @click="getByCategory('水果')">水果</button>
+        <button :class="{active: activeCat === '五金'}" @click="getByCategory('五金')">五金</button>
+        <button :class="{active: activeCat === '文具'}" @click="getByCategory('文具')">文具</button>
+      </div>
 
-          <input v-model="remarkList[product.id]" placeholder="下单备注（选填）" class="remark-input" />
+      <!-- 商品列表 -->
+      <div class="product-container">
+        <div class="product-list">
+          <div class="product-card" v-for="product in products" :key="product.id">
+            <!-- 核心：自动匹配Emoji -->
+            <div class="product-icon">
+              {{ getProductEmoji(product.name) }}
+            </div>
+            <h3 class="product-name">{{ product.name }}</h3>
+            <p class="price">¥{{ product.price }}</p>
+            <p class="stock" :class="{'low':product.stock < 5}">库存：{{ product.stock }}</p>
+
+            <div class="num-control">
+              <button @click="dec(product.id)">-</button>
+              <span>{{ cart[product.id] || 0 }}</span>
+              <button @click="add(product.id, product.stock)">+</button>
+            </div>
+
+            <input v-model="remarkList[product.id]" placeholder="下单备注（选填）" class="remark-input" />
+          </div>
+        </div>
+        <div v-if="products.length === 0" class="empty-state">
+          <div class="empty-icon">📦</div>
+          <p>该店铺暂无商品</p>
         </div>
       </div>
     </div>
@@ -188,12 +224,14 @@ export default {
   data() {
     return {
       products: [],
+      sellers: [],
       myOrders: [],
       cart: {},
       remarkList: {},
       showCartDrawer: false,
       showOrderDrawer: false,
       activeCat: '',
+      selectedSeller: null,
       addresses: [],
       selectedAddress: null,
       showAddressDialog: false
@@ -301,8 +339,15 @@ export default {
     },
 
     async getProducts() {
-      const {data} = await axios.get('http://localhost:8080/order/product/list')
-      this.products = data
+      if (this.selectedSeller) {
+        // 获取当前商家的商品（包括未分配的商品）
+        const {data} = await axios.get(`http://localhost:8080/order/product/seller/${this.selectedSeller.id}`)
+        this.products = data
+      } else {
+        // 获取所有商品（用于统计商家商品数量）
+        const {data} = await axios.get('http://localhost:8080/order/product/list')
+        this.products = data
+      }
       this.activeCat = ''
     },
     async getByCategory(cat) {
@@ -433,11 +478,37 @@ export default {
       this.showCartDrawer = false
       this.getProducts()
       this.getMyOrders()
+    },
+    
+    // 获取商家列表
+    async getSellers() {
+      const {data} = await axios.get('http://localhost:8080/admin/sellers')
+      this.sellers = data
+    },
+    
+    // 进入商家店铺
+    async enterSeller(seller) {
+      this.selectedSeller = seller
+      this.activeCat = ''
+      await this.getProducts()
+    },
+    
+    // 返回商家列表
+    backToSellers() {
+      this.selectedSeller = null
+      this.activeCat = ''
+      this.products = []
+    },
+    
+    // 获取商家商品数量
+    getSellerProductCount(sellerId) {
+      return this.products.filter(p => p.sellerId === sellerId).length
     }
   },
   mounted() {
     this.getProducts()
     this.getMyOrders()
+    this.getSellers()
     this.loadAddresses()
   }
 }
@@ -463,6 +534,113 @@ export default {
   color: #2a3342;
   margin-bottom: 35px;
   font-weight: 600;
+}
+
+/* 返回按钮 */
+.back-button{
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.back-btn{
+  padding: 10px 20px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+  transition: all 0.3s;
+}
+.back-btn:hover{
+  background: #f5f7fa;
+  border-color: #409eff;
+  color: #409eff;
+}
+.current-seller{
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* 商家列表 */
+.seller-container{
+  margin-bottom: 30px;
+}
+.seller-grid{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 25px;
+  justify-content: center;
+}
+.seller-card{
+  width: 280px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 30px 20px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.seller-card:hover{
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+.seller-icon{
+  font-size: 56px;
+  margin-bottom: 15px;
+}
+.seller-name{
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+.seller-status{
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.seller-status.status-active{
+  background: #e8f5e9;
+  color: #27ae60;
+}
+.seller-status.status-pending{
+  background: #fff3e0;
+  color: #f39c12;
+}
+.seller-product-count{
+  font-size: 14px;
+  color: #999;
+  margin-bottom: 18px;
+}
+.enter-btn{
+  display: inline-block;
+  padding: 10px 25px;
+  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+  color: #fff;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+.seller-card:hover .enter-btn{
+  transform: scale(1.05);
+}
+
+/* 空状态 */
+.empty-state{
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+.empty-icon{
+  font-size: 64px;
+  margin-bottom: 15px;
 }
 
 .action-buttons{
@@ -594,6 +772,15 @@ export default {
 .product-icon{
   font-size: 48px;
   margin-bottom: 15px;
+}
+.product-seller{
+  font-size: 12px;
+  color: #999;
+  background: #f5f7fa;
+  padding: 3px 8px;
+  border-radius: 10px;
+  display: inline-block;
+  margin-bottom: 8px;
 }
 .product-name{
   font-size: 17px;

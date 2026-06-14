@@ -40,7 +40,7 @@
     <section class="section">
       <div class="section-header">
         <h2 class="section-title">👤 商家账户管理</h2>
-        <button class="add-btn" @click="showAddSellerDialog=true">+ 新增商家</button>
+        <button class="add-btn" @click="openAddDialog('seller')">+ 新增商家</button>
       </div>
 
       <div class="table-container">
@@ -76,10 +76,62 @@
                 <td>
                   <button v-if="user.auditStatus === 0" class="btn-sm success" @click="auditUser(user, 1)">通过</button>
                   <button v-if="user.auditStatus === 0" class="btn-sm danger" @click="auditUser(user, 2)">拒绝</button>
-                  <button class="btn-sm warning" @click="toggleUserStatus(user)">
+                  <button v-if="user.auditStatus === 1" class="btn-sm warning" @click="toggleUserStatus(user)">
                     {{ user.status === 1 ? '禁用' : '启用' }}
                   </button>
-                  <button class="btn-sm danger" @click="deleteUser(user.id)">删除</button>
+                  <button v-if="user.auditStatus === 1" class="btn-sm danger" @click="deleteUser(user.id)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 配送员管理区域 -->
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">🚚 配送员账户管理</h2>
+        <button class="add-btn" @click="openAddDialog('delivery')">+ 新增配送员</button>
+      </div>
+
+      <div class="table-container">
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th width="60">ID</th>
+                <th>用户名</th>
+                <th>角色</th>
+                <th>审核状态</th>
+                <th>账户状态</th>
+                <th width="200">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in deliverymen" :key="user.id">
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td>
+                  <span class="tag tag-role">delivery</span>
+                </td>
+                <td>
+                  <span class="tag" :class="getAuditClass(user.auditStatus)">
+                    {{ getAuditText(user.auditStatus) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="tag" :class="user.status === 1 ? 'tag-active' : 'tag-disabled'">
+                    {{ user.status === 1 ? '正常' : '已禁用' }}
+                  </span>
+                </td>
+                <td>
+                  <button v-if="user.auditStatus === 0" class="btn-sm success" @click="auditUser(user, 1)">通过</button>
+                  <button v-if="user.auditStatus === 0" class="btn-sm danger" @click="auditUser(user, 2)">拒绝</button>
+                  <button v-if="user.auditStatus === 1" class="btn-sm warning" @click="toggleUserStatus(user)">
+                    {{ user.status === 1 ? '禁用' : '启用' }}
+                  </button>
+                  <button v-if="user.auditStatus === 1" class="btn-sm danger" @click="deleteUser(user.id)">删除</button>
                 </td>
               </tr>
             </tbody>
@@ -173,7 +225,8 @@ export default {
         username: '',
         password: '',
         role: 'seller'
-      }
+      },
+      deliverymen: []
     }
   },
   methods: {
@@ -206,6 +259,7 @@ export default {
     async refreshAll() {
       await this.getStats()
       await this.getSellers()
+      await this.getDeliverymen()
       await this.getLogs()
     },
     async getStats() {
@@ -233,6 +287,18 @@ export default {
     async getSellers() {
       const {data} = await axios.get('http://localhost:8080/admin/sellers')
       this.sellers = data
+    },
+    async getDeliverymen() {
+      const {data} = await axios.get('http://localhost:8080/admin/delivery')
+      this.deliverymen = data
+    },
+    openAddDialog(role) {
+      this.newSeller = {
+        username: '',
+        password: '',
+        role: role
+      }
+      this.showAddSellerDialog = true
     },
     async getLogs() {
       const {data} = await axios.get('http://localhost:8080/admin/logs')
@@ -432,11 +498,13 @@ export default {
 .data-table{
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 .data-table th, .data-table td{
-  padding: 16px 12px;
+  padding: 18px 16px;
   text-align: left;
   border-bottom: 1px solid #e5e6eb;
+  vertical-align: middle;
 }
 .data-table th{
   background: #f5f7fa;
@@ -496,14 +564,18 @@ export default {
 
 /* 小按钮 */
 .btn-sm{
-  padding: 8px 16px;
+  padding: 8px 18px;
   border-radius: 8px;
   border: none;
-  margin: 0 6px;
+  margin: 0 4px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
   transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
 }
 .btn-sm.success{
   background: #67c23a;

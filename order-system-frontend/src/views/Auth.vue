@@ -111,6 +111,14 @@ export default {
         alert('请填写完整信息')
         return
       }
+      // 手机号格式验证
+      if (this.registerForm.phone) {
+        const phoneRegex = /^1[3-9]\d{9}$/
+        if (!phoneRegex.test(this.registerForm.phone)) {
+          alert('请输入有效的11位手机号码')
+          return
+        }
+      }
       try {
         const { data } = await axios.post('http://localhost:8080/auth/register', this.registerForm)
         if (data.success) {
